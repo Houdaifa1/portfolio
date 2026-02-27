@@ -1,267 +1,348 @@
 import { useEffect, useRef } from 'react';
 
 export default function SpaceCanvas() {
-  const canvasRef = useRef(null);
+  const mountRef = useRef(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const mount = mountRef.current;
+    if (!mount) return;
 
-    let W = window.innerWidth, H = window.innerHeight;
-    let raf;
+    // ── Load Three.js from CDN ───────────────────────────────────────────
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    script.onload = () => initScene();
+    document.head.appendChild(script);
 
-    function resize() {
-      W = window.innerWidth; H = window.innerHeight;
-      canvas.width = W; canvas.height = H;
-    }
-    resize();
+    let renderer, scene, camera, animId;
+    let skyMesh, starPoints, starPoints2, starPoints3;
 
-    function rand(a, b) { return a + Math.random() * (b - a); }
-    function pick(arr) { return arr[Math.floor(rand(0, arr.length - 0.01))]; }
+    function initScene() {
+      const THREE = window.THREE;
 
-    // ── WORLD SIZE — camera pans across this, creating infinite drift ────
-    const WW = W * 4, WH = H * 4;
+      // ── Renderer ────────────────────────────────────────────────────────
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 1);
+      mount.appendChild(renderer.domElement);
 
-    // Camera — slow, organic spaceship movement
-    let camX = 0, camY = 0;
-    let camVX = 0.022, camVY = 0.009;
+      scene = new THREE.Scene();
 
-    // ── STAR COLORS from the images ──────────────────────────────────────
-    // Image 1 (Spitzer infrared): mostly white/blue-white stars on dark field, warm orange clusters
-    // Image 2 (Chad Powell): blue-white dominant milky way core, white surrounding stars
-    const COLS_BLUE  = ['#ffffff','#f0f4ff','#e0ecff','#d0e4ff','#c4d8ff','#f8faff'];
-    const COLS_WARM  = ['#ffd8a0','#ffbf78','#ff9a55','#ffeedd','#ffcc99'];
-    const COLS_WHITE = ['#ffffff','#f8f8f8','#fafbff','#f4f8ff'];
+      // ── Camera — inside the sphere, looking outward ──────────────────
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+      camera.position.set(0, 0, 0);
 
-    // ── LAYER 0 — faint background haze (very distant stars) ─────────────
-    const bgStars = Array.from({ length: 8000 }, () => ({
-      x: rand(0, WW), y: rand(0, WH),
-      r: rand(0.06, 0.22),
-      a: rand(0.04, 0.14),
-      col: Math.random() > 0.9 ? pick(COLS_WARM) : pick(COLS_BLUE),
-    }));
+      // ── Sky Sphere with GLSL nebula shader ───────────────────────────
+      // This is the Milky Way + nebula painted directly on a giant sphere
+      // using procedural noise — you're INSIDE it looking out
+      const skyGeo = new THREE.SphereGeometry(800, 64, 64);
 
-    // ── LAYER 1 — mid-field stars ─────────────────────────────────────────
-    const midStars = Array.from({ length: 3500 }, () => ({
-      x: rand(0, WW), y: rand(0, WH),
-      r: rand(0.18, 0.65),
-      a: rand(0.12, 0.50),
-      col: Math.random() > 0.82 ? pick(COLS_WARM) : pick(COLS_BLUE),
-      tw: rand(0, Math.PI * 2),
-      ts: rand(0.15, 0.7),
-    }));
+      const skyMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide, // render inside of sphere
+        uniforms: {
+          uTime: { value: 0 },
+        },
+        vertexShader: `
+          varying vec3 vPos;
+          varying vec2 vUv;
+          void main() {
+            vPos = position;
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          varying vec3 vPos;
+          varying vec2 vUv;
 
-    // ── LAYER 2 — bright foreground stars ────────────────────────────────
-    const fgStars = Array.from({ length: 320 }, () => ({
-      x: rand(0, WW), y: rand(0, WH),
-      r: rand(0.55, 1.9),
-      a: rand(0.45, 1.0),
-      col: Math.random() > 0.72 ? pick(COLS_WARM) : pick(COLS_WHITE),
-      tw: rand(0, Math.PI * 2),
-      ts: rand(0.1, 0.5),
-    }));
+          // ── Hash & noise ──────────────────────────────────────────────
+          float hash(vec2 p) {
+            p = fract(p * vec2(234.34, 435.345));
+            p += dot(p, p + 34.23);
+            return fract(p.x * p.y);
+          }
+          float hash3(vec3 p) {
+            p = fract(p * vec3(443.8975, 397.2973, 491.1871));
+            p += dot(p, p.yxz + 19.19);
+            return fract(p.x * p.z);
+          }
+          float noise(vec2 p) {
+            vec2 i = floor(p), f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(
+              mix(hash(i), hash(i + vec2(1,0)), f.x),
+              mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x),
+              f.y
+            );
+          }
+          float fbm(vec2 p) {
+            float v = 0.0, a = 0.5;
+            for (int i = 0; i < 6; i++) {
+              v += a * noise(p);
+              p = p * 2.0 + vec2(1.7, 9.2);
+              a *= 0.5;
+            }
+            return v;
+          }
+          float fbm3(vec2 p) {
+            float v = 0.0, a = 0.5;
+            mat2 rot = mat2(cos(0.5), -sin(0.5), sin(0.5), cos(0.5));
+            for (int i = 0; i < 8; i++) {
+              v += a * noise(p);
+              p = rot * p * 2.1 + vec2(3.1, 7.4);
+              a *= 0.48;
+            }
+            return v;
+          }
 
-    // ── MILKY WAY — dense star band matching the images ───────────────────
-    // Image 2: bright blue-white vertical/diagonal column
-    // Image 1: horizontal band of packed red/warm stars
-    const mwStars = (() => {
-      const arr = [];
-      const COUNT = 18000;
-      for (let i = 0; i < COUNT; i++) {
-        const t = rand(0, WH);
-        // Band: slightly diagonal, curving — like a real galaxy arm
-        const progress = t / WH;
-        // Two bands combined: one diagonal (image 2 style), one horizontal (image 1 style)
-        const band1CX = WW * (0.35 + progress * 0.08 + Math.sin(progress * Math.PI) * 0.06);
-        const spread1 = WW * 0.09;
-        const nx = (Math.random() - 0.5) * 2;
-        const gx = nx * spread1 * (0.2 + Math.pow(Math.abs(nx), 0.6) * 0.8);
-        const dist = Math.abs(gx) / spread1;
-        const brightness = Math.pow(Math.max(0, 1 - dist), 1.6);
-        if (brightness < 0.02) continue;
+          // ── Spherical coords ──────────────────────────────────────────
+          vec2 sphereUV(vec3 dir) {
+            dir = normalize(dir);
+            float lon = atan(dir.z, dir.x);
+            float lat = asin(dir.y);
+            return vec2(lon / (2.0 * 3.14159) + 0.5, lat / 3.14159 + 0.5);
+          }
 
-        // Core is blue-white (image 2), edges warm (image 1)
-        let col;
-        if (dist < 0.2) col = pick(COLS_BLUE.slice(0, 3));
-        else if (dist < 0.55) col = pick(COLS_BLUE);
-        else col = Math.random() > 0.5 ? pick(COLS_WARM) : pick(COLS_BLUE);
+          void main() {
+            vec3 dir = normalize(vPos);
+            vec2 uv = sphereUV(dir);
 
-        arr.push({
-          x: band1CX + gx,
-          y: t,
-          r: rand(0.06, 0.30),
-          a: rand(0.05, 0.26) * brightness,
-          col,
-        });
+            // ── Slow time drift ───────────────────────────────────────
+            float t = uTime * 0.012;
+            vec2 uvd = uv + vec2(t * 0.08, t * 0.03);
+
+            // ── Base deep space black ─────────────────────────────────
+            vec3 col = vec3(0.0, 0.0, 0.008);
+
+            // ── Milky Way band ────────────────────────────────────────
+            // Diagonal galactic plane band
+            float band = dir.y * 0.6 - dir.x * 0.3 + dir.z * 0.2;
+            float mwCore = exp(-band * band * 18.0); // tight core
+            float mwHalo = exp(-band * band * 4.0);  // wide halo
+
+            // Noise to break it up — dense star clouds
+            float mwNoise = fbm(uv * vec2(6.0, 12.0) + vec2(t * 0.4, 0.0));
+            float mwNoise2 = fbm3(uv * vec2(4.0, 8.0) + vec2(0.5, t * 0.3));
+
+            // Milky Way colors:
+            // Core: warm white/yellow-white (galactic bulge)
+            // Halo: blue-white
+            // Outer: faint blue
+            vec3 mwCoreColor = vec3(0.92, 0.82, 0.65) * mwCore * mwNoise * 1.8;
+            vec3 mwHaloColor = vec3(0.38, 0.52, 0.88) * mwHalo * mwNoise2 * 0.55;
+            vec3 mwFaint = vec3(0.12, 0.18, 0.42) * mwHalo * 0.35;
+
+            col += mwCoreColor + mwHaloColor + mwFaint;
+
+            // ── Dark dust lanes cutting through the band ───────────────
+            // (the black rifts you see in image 1)
+            float dustLane1 = exp(-(band + 0.025) * (band + 0.025) * 600.0);
+            float dustLane2 = exp(-(band - 0.018) * (band - 0.018) * 800.0);
+            float dustNoise = fbm(uv * vec2(8.0, 20.0));
+            col *= 1.0 - dustLane1 * dustNoise * 1.4;
+            col *= 1.0 - dustLane2 * (1.0 - dustNoise) * 0.9;
+
+            // ── Infrared dust clouds — reds/pinks (image 1 Spitzer) ────
+            float rNoise = fbm3(uv * 3.5 + vec2(1.2, t * 0.15));
+            float rNoise2 = fbm(uv * 2.0 + vec2(t * 0.1, 2.3));
+            // Red/crimson dust blobs near galactic plane
+            float redDust = mwHalo * rNoise * rNoise2;
+            col += vec3(0.45, 0.04, 0.02) * redDust * 0.6;
+            col += vec3(0.35, 0.08, 0.12) * mwHalo * fbm(uv * 5.0 + vec2(3.0, t * 0.2)) * 0.3;
+
+            // ── Blue nebula regions ────────────────────────────────────
+            float bNoise = fbm3(uv * 2.8 + vec2(t * 0.06, 1.7));
+            float bNoise2 = fbm(uv * 1.5 + vec2(5.0, t * 0.08));
+            col += vec3(0.02, 0.08, 0.35) * bNoise * bNoise2 * 0.5;
+            // Cyan-teal wisps
+            col += vec3(0.0, 0.18, 0.22) * fbm(uv * 4.0 + vec2(t * 0.05, 4.0)) * fbm3(uv * 3.0) * 0.4;
+
+            // ── Faint purple/violet regions ────────────────────────────
+            col += vec3(0.12, 0.02, 0.22) * fbm3(uv * 2.2 + vec2(6.0, t * 0.07)) * 0.3;
+
+            // ── Green airglow near galactic horizon (image 2) ──────────
+            float horizon = exp(-abs(dir.y + 0.15) * 8.0);
+            col += vec3(0.02, 0.18, 0.08) * horizon * fbm(uv * 6.0 + vec2(t * 0.2, 0.0)) * 0.35;
+
+            // ── Micro star field embedded in shader ────────────────────
+            // These are the extremely faint background stars — billions of them
+            // packed so dense they look like a haze
+            float microStars = pow(hash(floor(uv * 1800.0)), 14.0);
+            float microStars2 = pow(hash(floor(uv * 2600.0 + vec2(33.0, 71.0))), 18.0);
+            float microStars3 = pow(hash(floor(uv * 800.0 + vec2(17.0, 53.0))), 10.0);
+            col += vec3(0.8, 0.85, 1.0) * microStars * 1.8;
+            col += vec3(0.9, 0.9, 1.0) * microStars2 * 1.2;
+            col += vec3(1.0, 0.95, 0.85) * microStars3 * 0.6 * (0.5 + mwHalo * 0.5);
+
+            // ── Tone mapping — make it feel like a real photo exposure ──
+            // Filmic: lifts blacks slightly, compresses bright areas
+            col = col / (col + vec3(0.18));
+            col = pow(col, vec3(0.92)); // slight gamma lift
+
+            // Keep it dark — space is BLACK
+            col = clamp(col, vec3(0.0), vec3(1.0));
+
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+      });
+
+      skyMesh = new THREE.Mesh(skyGeo, skyMat);
+      scene.add(skyMesh);
+
+      // ── Three layers of point stars in actual 3D space ────────────────
+      // These are the BRIGHT stars you can clearly see
+      // They move with parallax as camera rotates — true 3D depth
+
+      function makeStars(count, spread, sizeMin, sizeMax, colorFn) {
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        const sizes = new Float32Array(count);
+
+        for (let i = 0; i < count; i++) {
+          // Random point on sphere shell at varying distances
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const r = spread * (0.5 + Math.random() * 0.5);
+          positions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+          positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+          positions[i * 3 + 2] = r * Math.cos(phi);
+
+          const c = colorFn();
+          colors[i * 3]     = c[0];
+          colors[i * 3 + 1] = c[1];
+          colors[i * 3 + 2] = c[2];
+
+          sizes[i] = sizeMin + Math.random() * (sizeMax - sizeMin);
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        return geo;
       }
-      return arr;
-    })();
 
-    // ── NEBULA CLOUDS — matching both images ──────────────────────────────
-    // No flashy colors. Dark, subtle, realistic.
-    const nebulae = [
-      // Image 1 — deep red/crimson dust (Spitzer infrared galactic center)
-      { cx: WW*0.36, cy: WH*0.50, rx: WW*0.18, ry: WH*0.13, col:[110,22,8],   a:0.055, rot:-0.06 },
-      { cx: WW*0.28, cy: WH*0.43, rx: WW*0.12, ry: WH*0.09, col:[90,15,6],    a:0.04,  rot:0.10  },
-      { cx: WW*0.50, cy: WH*0.58, rx: WW*0.10, ry: WH*0.07, col:[80,18,12],   a:0.032, rot:-0.18 },
-      // Pink/magenta blobs (image 1 edges)
-      { cx: WW*0.22, cy: WH*0.62, rx: WW*0.09, ry: WH*0.06, col:[100,15,35],  a:0.028, rot:0.22  },
-      { cx: WW*0.60, cy: WH*0.36, rx: WW*0.08, ry: WH*0.05, col:[95,12,28],   a:0.024, rot:-0.3  },
-      // Image 2 — blue-white galactic core pillar glow
-      { cx: WW*0.38, cy: WH*0.46, rx: WW*0.035, ry: WH*0.22, col:[25,55,130], a:0.042, rot:0.04  },
-      { cx: WW*0.37, cy: WH*0.42, rx: WW*0.02,  ry: WH*0.10, col:[40,80,180], a:0.038, rot:0.02  },
-      // Green airglow at galactic horizon (image 2 bottom)
-      { cx: WW*0.38, cy: WH*0.74, rx: WW*0.10, ry: WH*0.05, col:[8,75,45],   a:0.035, rot:0     },
-      // Overall dark blue space field
-      { cx: WW*0.65, cy: WH*0.35, rx: WW*0.25, ry: WH*0.20, col:[4,12,38],   a:0.045, rot:0.25  },
-      { cx: WW*0.15, cy: WH*0.25, rx: WW*0.18, ry: WH*0.15, col:[3,10,32],   a:0.038, rot:-0.1  },
-      // DARK ABSORPTION LANES — the black dust lanes cutting through (image 1)
-      // Rendered as dark overlay
-      { cx: WW*0.37, cy: WH*0.50, rx: WW*0.025, ry: WH*0.20, col:[0,0,0],    a:0.55,  rot:-0.04 },
-      { cx: WW*0.40, cy: WH*0.48, rx: WW*0.018, ry: WH*0.14, col:[0,0,0],    a:0.40,  rot:0.07  },
-      { cx: WW*0.34, cy: WH*0.52, rx: WW*0.014, ry: WH*0.10, col:[0,0,0],    a:0.30,  rot:-0.12 },
-      // Faint warm galactic center glow
-      { cx: WW*0.38, cy: WH*0.50, rx: WW*0.06,  ry: WH*0.04, col:[150,70,18],a:0.028, rot:0     },
-    ];
+      // Star color functions — realistic spectral types
+      const blueWhite = () => {
+        const t = Math.random();
+        if (t < 0.5) return [0.85 + Math.random()*0.15, 0.88 + Math.random()*0.12, 1.0];
+        if (t < 0.75) return [1.0, 1.0, 1.0];
+        if (t < 0.88) return [1.0, 0.95, 0.80];
+        return [1.0, 0.72 + Math.random()*0.15, 0.45 + Math.random()*0.2];
+      };
 
-    // ── DRAW NEBULA ───────────────────────────────────────────────────────
-    function drawNebula(n, ox, oy) {
-      const sx = ((n.cx - ox) % WW + WW) % WW;
-      const sy = ((n.cy - oy) % WH + WH) % WH;
-      // Only draw if near viewport (performance)
-      if (sx + n.rx < -WW*0.1 || sx - n.rx > W + WW*0.1) return;
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(n.rot);
-      const maxR = Math.max(n.rx, n.ry);
-      const [r, g, b] = n.col;
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, maxR);
-      grad.addColorStop(0,    `rgba(${r},${g},${b},${n.a})`);
-      grad.addColorStop(0.4,  `rgba(${r},${g},${b},${n.a * 0.55})`);
-      grad.addColorStop(0.75, `rgba(${r},${g},${b},${n.a * 0.15})`);
-      grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
-      ctx.scale(n.rx / maxR, n.ry / maxR);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, maxR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      const starShader = new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 } },
+        vertexShader: `
+          attribute float size;
+          attribute vec3 color;
+          varying vec3 vColor;
+          varying float vSize;
+          void main() {
+            vColor = color;
+            vSize = size;
+            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = size * (400.0 / -mvPos.z);
+            gl_Position = projectionMatrix * mvPos;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vColor;
+          varying float vSize;
+          void main() {
+            vec2 uv = gl_PointCoord - 0.5;
+            float d = length(uv);
+            if (d > 0.5) discard;
+            // Soft circle — bright center fading out
+            float alpha = 1.0 - smoothstep(0.0, 0.5, d);
+            alpha = pow(alpha, 1.4);
+            // Glow halo
+            float glow = exp(-d * 6.0) * 0.35;
+            gl_FragColor = vec4(vColor, alpha + glow);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        vertexColors: true,
+      });
+
+      // Layer 1: Far mid-field stars (400 units away)
+      const geo1 = makeStars(3000, 400, 1.2, 3.5, blueWhite);
+      starPoints = new THREE.Points(geo1, starShader.clone());
+      scene.add(starPoints);
+
+      // Layer 2: Mid stars (200 units)
+      const geo2 = makeStars(800, 200, 2.0, 5.5, blueWhite);
+      starPoints2 = new THREE.Points(geo2, starShader.clone());
+      scene.add(starPoints2);
+
+      // Layer 3: Close bright stars (80 units) — most parallax
+      const geo3 = makeStars(120, 80, 3.5, 9.0, blueWhite);
+      starPoints3 = new THREE.Points(geo3, starShader.clone());
+      scene.add(starPoints3);
+
+      // ── Camera drift — cinematic spaceship movement ──────────────────
+      // Camera stays at origin but ROTATES very slowly
+      // This is how you get the 3D effect — the parallax between
+      // the background sphere and the 3D point stars
+      let t = 0;
+
+      function animate() {
+        animId = requestAnimationFrame(animate);
+        t += 0.0003; // very slow
+
+        // Update sky shader time
+        skyMesh.material.uniforms.uTime.value = t * 1000;
+        starPoints.material.uniforms.uTime.value = t * 1000;
+        starPoints2.material.uniforms.uTime.value = t * 1000;
+        starPoints3.material.uniforms.uTime.value = t * 1000;
+
+        // Camera slowly rotates — like drifting through space on a ship
+        // Compound multi-axis rotation = cinematic 3D floating feel
+        camera.rotation.y = t * 0.8 + Math.sin(t * 0.3) * 0.15;
+        camera.rotation.x = Math.sin(t * 0.22) * 0.06;
+        camera.rotation.z = Math.sin(t * 0.17) * 0.025;
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
     }
 
-    // ── DRAW STAR FIELD ───────────────────────────────────────────────────
-    function drawStars(stars, ox, oy, tick, useTwinkle) {
-      stars.forEach(s => {
-        const sx = ((s.x - ox) % WW + WW) % WW;
-        const sy = ((s.y - oy) % WH + WH) % WH;
-        if (sx < -2 || sx > W + 2 || sy < -2 || sy > H + 2) return;
-        let a = s.a;
-        if (useTwinkle && s.tw !== undefined) {
-          a *= (0.72 + 0.28 * Math.sin(tick * s.ts + s.tw));
-        }
-        ctx.globalAlpha = a;
-        ctx.fillStyle = s.col;
-        ctx.beginPath();
-        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
+    // ── Resize ───────────────────────────────────────────────────────────
+    function onResize() {
+      if (!renderer || !camera) return;
+      const THREE = window.THREE;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
     }
+    window.addEventListener('resize', onResize);
 
-    // ── MAIN LOOP ─────────────────────────────────────────────────────────
-    let tick = 0;
-
-    function draw() {
-      raf = requestAnimationFrame(draw);
-      tick += 0.003;
-
-      // Organic camera drift — like a spaceship on autopilot, very slow
-      camVX = 0.020 + Math.sin(tick * 0.055) * 0.006;
-      camVY = 0.008 + Math.cos(tick * 0.042) * 0.003;
-      camX += camVX;
-      camY += camVY;
-
-      // ── Pure deep space black
-      ctx.fillStyle = '#010106';
-      ctx.fillRect(0, 0, W, H);
-
-      // Layer offsets — different parallax speeds create 3D depth
-      const o0x = camX * 0.12, o0y = camY * 0.12; // nebulae — slowest
-      const o1x = camX * 0.20, o1y = camY * 0.20; // bg stars
-      const o2x = camX * 0.40, o2y = camY * 0.40; // milky way band
-      const o3x = camX * 0.55, o3y = camY * 0.55; // mid stars
-      const o4x = camX * 1.0,  o4y = camY * 1.0;  // foreground — fastest
-
-      // ── Nebulae (screen blend for emission look)
-      ctx.globalCompositeOperation = 'screen';
-      const nox = o0x % WW, noy = o0y % WH;
-      nebulae.forEach(n => {
-        // Tile in case band wraps
-        drawNebula(n, nox, noy);
-        drawNebula({ ...n, cx: n.cx - WW }, nox, noy);
-        drawNebula({ ...n, cx: n.cx + WW }, nox, noy);
-        drawNebula({ ...n, cy: n.cy - WH }, nox, noy);
-        drawNebula({ ...n, cy: n.cy + WH }, nox, noy);
-      });
-      ctx.globalCompositeOperation = 'source-over';
-
-      // ── Background stars
-      drawStars(bgStars, o1x % WW, o1y % WH, tick, false);
-
-      // ── Milky Way dense band
-      drawStars(mwStars, o2x % WW, o2y % WH, tick, false);
-
-      // ── Mid stars
-      drawStars(midStars, o3x % WW, o3y % WH, tick, true);
-
-      // ── Bright foreground stars with subtle glow
-      fgStars.forEach(s => {
-        const sx = ((s.x - o4x % WW) % WW + WW) % WW;
-        const sy = ((s.y - o4y % WH) % WH + WH) % WH;
-        if (sx < -4 || sx > W + 4 || sy < -4 || sy > H + 4) return;
-        const a = s.a * (0.72 + 0.28 * Math.sin(tick * s.ts + s.tw));
-        // Glow halo (subtle, not flashy)
-        if (s.r > 1.0) {
-          ctx.globalAlpha = a * 0.18;
-          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, s.r * 6);
-          g.addColorStop(0, s.col);
-          g.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(sx, sy, s.r * 6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.globalAlpha = a;
-        ctx.fillStyle = s.col;
-        ctx.beginPath();
-        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
-
-      // ── Deep vignette — makes it feel like a porthole or telescope
-      const vig = ctx.createRadialGradient(W * 0.5, H * 0.5, H * 0.22, W * 0.5, H * 0.5, H * 0.95);
-      vig.addColorStop(0, 'rgba(0,0,0,0)');
-      vig.addColorStop(0.65, 'rgba(0,0,0,0)');
-      vig.addColorStop(1, 'rgba(0,0,4,0.78)');
-      ctx.fillStyle = vig;
-      ctx.fillRect(0, 0, W, H);
-    }
-
-    draw();
-
-    window.addEventListener('resize', resize);
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', onResize);
+      if (renderer && mount.contains(renderer.domElement)) {
+        mount.removeChild(renderer.domElement);
+        renderer.dispose();
+      }
+      if (script.parentNode) script.parentNode.removeChild(script);
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      id="space-canvas"
-      style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', display: 'block' }}
+    <div
+      ref={mountRef}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: 'none',
+        background: '#000005',
+      }}
     />
   );
 }
