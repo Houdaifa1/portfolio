@@ -1,15 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// ─────────────────────────────────────────────────────────────────
-//  Cub3DGame — input fixed to mirror SoLongGame's proven pattern:
-//
-//  KEY FIX: Instead of window-level listeners gated by a `playing`
-//  boolean (async, races, doesn't block scroll), we use a focusable
-//  wrapper div (tabIndex=0) with onKeyDown/onKeyUp directly on it —
-//  exactly like SoLong. Click → focus() synchronously. React calls
-//  e.preventDefault() before the browser scrolls. Works everywhere.
-// ─────────────────────────────────────────────────────────────────
-
 const MAP = [
   [1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,1],
@@ -23,6 +13,10 @@ const MAP = [
   [1,1,1,1,1,1,1,1,1,1],
 ];
 const ROWS = MAP.length, COLS_M = MAP[0].length;
+
+const GAME_KEYS = new Set([
+  'arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' ',
+]);
 
 function rotVec(x, y, a) {
   const c = Math.cos(a), s = Math.sin(a);
@@ -39,7 +33,6 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   sky.addColorStop(1, '#060d1a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H / 2);
-
   const flr = ctx.createLinearGradient(0, H / 2, 0, H);
   flr.addColorStop(0, '#050810');
   flr.addColorStop(1, '#020305');
@@ -75,12 +68,10 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
     }
   }
 
-  // Minimap
   const MS = 10, mmx = W - COLS_M * MS - 8, mmy = 8;
   ctx.fillStyle = 'rgba(2,4,10,0.9)';
   ctx.fillRect(mmx - 2, mmy - 2, COLS_M * MS + 4, ROWS * MS + 4);
-  ctx.strokeStyle = 'rgba(0,180,255,0.22)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0,180,255,0.22)'; ctx.lineWidth = 1;
   ctx.strokeRect(mmx - 2, mmy - 2, COLS_M * MS + 4, ROWS * MS + 4);
   MAP.forEach((row, y) => row.forEach((cell, x) => {
     ctx.fillStyle = cell ? '#0a1828' : '#030609';
@@ -88,45 +79,33 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   }));
   const ppx = mmx + px * MS, ppy = mmy + py * MS;
   ctx.fillStyle = '#00d4ff';
-  ctx.beginPath();
-  ctx.arc(ppx, ppy, 2.5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(ppx, ppy, 2.5, 0, Math.PI * 2); ctx.fill();
   const fl2 = MS * 2.8;
-  ctx.strokeStyle = 'rgba(0,212,255,0.28)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0,212,255,0.28)'; ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(ppx, ppy);
-  ctx.lineTo(ppx + (dx - cx) * fl2, ppy + (dy - cy) * fl2);
-  ctx.moveTo(ppx, ppy);
-  ctx.lineTo(ppx + (dx + cx) * fl2, ppy + (dy + cy) * fl2);
+  ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + (dx - cx) * fl2, ppy + (dy - cy) * fl2);
+  ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + (dx + cx) * fl2, ppy + (dy + cy) * fl2);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(0,212,255,0.75)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(ppx, ppy);
-  ctx.lineTo(ppx + dx * fl2 * 0.6, ppy + dy * fl2 * 0.6);
+  ctx.strokeStyle = 'rgba(0,212,255,0.75)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + dx * fl2 * 0.6, ppy + dy * fl2 * 0.6);
   ctx.stroke();
 }
 
-// ── D-pad button ─────────────────────────────────────────────────
 function Btn({ label, onPress, onRelease }) {
   return (
     <div
-      onPointerDown={e => { e.preventDefault(); onPress(); }}
-      onPointerUp={onRelease}
-      onPointerLeave={onRelease}
-      onPointerCancel={onRelease}
+      onPointerDown={e => { e.preventDefault(); e.stopPropagation(); onPress(); }}
+      onPointerUp={e => { e.preventDefault(); onRelease(); }}
+      onPointerLeave={e => { e.preventDefault(); onRelease(); }}
+      onPointerCancel={e => { e.preventDefault(); onRelease(); }}
       style={{
-        width: 44, height: 44,
+        width: 48, height: 48,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(0,212,255,0.07)',
         border: '1px solid rgba(0,212,255,0.22)',
-        borderRadius: 8,
-        color: '#00d4ff',
-        fontSize: 18,
-        userSelect: 'none',
-        touchAction: 'none',
-        cursor: 'pointer',
+        borderRadius: 8, color: '#00d4ff', fontSize: 20,
+        userSelect: 'none', WebkitUserSelect: 'none',
+        touchAction: 'none', cursor: 'pointer',
         fontFamily: 'var(--mono)',
       }}
     >
@@ -135,87 +114,100 @@ function Btn({ label, onPress, onRelease }) {
   );
 }
 
-const GAME_KEYS = new Set([
-  'arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' ',
-]);
-
 export default function Cub3DGame({ active }) {
-  const canvasRef  = useRef(null);
-  const wrapRef    = useRef(null);
+  const canvasRef = useRef(null);
+  const wrapRef   = useRef(null);
   const [playing, setPlaying] = useState(false);
 
-  // All mutable game state in one ref — no re-render on mutation
+  // G.current.playing is a SYNCHRONOUS ref mirror of the playing state.
+  // Event handlers read this directly — no async setState lag, no stale closures.
   const G = useRef({
-    px: 1.5, py: 1.5,
-    dx: 1,   dy: 0,
-    cx: 0,   cy: 0.6,
-    keys: new Set(),   // held keyboard keys (lowercased)
-    btns: new Set(),   // held on-screen buttons
-    raf: null,
+    px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.6,
+    keys: new Set(), btns: new Set(),
+    playing: false, raf: null,
   });
 
-  // ── Focus wrapper on click (same trick as SoLong) ─────────────
-  const handleClick = useCallback((e) => {
-    e.stopPropagation();
-    wrapRef.current?.focus();
-    setPlaying(true);
-  }, []);
+  // Sync playing state → ref
+  useEffect(() => { G.current.playing = playing; }, [playing]);
 
-  // ── onKeyDown on the wrapper div — fires BEFORE browser scroll ─
-  const handleKeyDown = useCallback((e) => {
-    const k = e.key.toLowerCase();
-    if (GAME_KEYS.has(k)) {
-      e.preventDefault();   // ← stops page scroll, same as SoLong
-      e.stopPropagation();
-      G.current.keys.add(k);
-    }
-  }, []);
-
-  const handleKeyUp = useCallback((e) => {
-    G.current.keys.delete(e.key.toLowerCase());
-  }, []);
-
-  // ── Blur → stop playing ───────────────────────────────────────
-  const handleBlur = useCallback((e) => {
-    // Only deactivate if focus truly left our subtree
-    if (!wrapRef.current?.contains(e.relatedTarget)) {
-      setPlaying(false);
-      G.current.keys.clear();
-      G.current.btns.clear();
-    }
-  }, []);
-
-  // ── Auto-focus when parent makes this tab active ──────────────
+  // ── Window key listeners — capture phase, passive:false ───────────
+  // This is the ONLY pattern that beats browser scroll in all engines:
+  // • capture:true  → fires before scroll handlers
+  // • passive:false → allows preventDefault()
+  // • We preventDefault ALL game keys regardless of playing state —
+  //   once the user has clicked in, we own those keys completely.
+  // • playing is checked via G.current.playing (sync ref, not stale state)
   useEffect(() => {
-    if (active) {
-      wrapRef.current?.focus();
-    } else {
-      setPlaying(false);
+    if (!active) return;
+
+    const onKeyDown = e => {
+      const k = e.key.toLowerCase();
+      if (!GAME_KEYS.has(k)) return;
+      e.preventDefault();    // always — no scroll, no browser shortcut
+      e.stopPropagation();
+      if (G.current.playing) G.current.keys.add(k);
+    };
+    const onKeyUp = e => {
+      const k = e.key.toLowerCase();
+      if (GAME_KEYS.has(k)) { e.preventDefault(); G.current.keys.delete(k); }
+    };
+
+    window.addEventListener('keydown', onKeyDown, { capture: true, passive: false });
+    window.addEventListener('keyup',   onKeyUp,   { capture: true, passive: false });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keyup',   onKeyUp,   { capture: true });
+    };
+  }, [active]);
+
+  // ── Click outside wrapper → stop ──────────────────────────────────
+  useEffect(() => {
+    if (!active) return;
+    const stop = e => {
+      if (!wrapRef.current?.contains(e.target)) {
+        G.current.playing = false;
+        G.current.keys.clear();
+        G.current.btns.clear();
+        setPlaying(false);
+      }
+    };
+    window.addEventListener('pointerdown', stop, { capture: true });
+    return () => window.removeEventListener('pointerdown', stop, { capture: true });
+  }, [active]);
+
+  // ── Tab deactivated ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!active) {
+      G.current.playing = false;
       G.current.keys.clear();
       G.current.btns.clear();
+      setPlaying(false);
+      if (G.current.raf) { cancelAnimationFrame(G.current.raf); G.current.raf = null; }
     }
   }, [active]);
 
-  // ── Game loop ─────────────────────────────────────────────────
+  // ── Start on click ─────────────────────────────────────────────────
+  const handleClick = useCallback(e => {
+    e.stopPropagation();
+    G.current.playing = true;   // sync — instant, no race
+    setPlaying(true);
+  }, []);
+
+  // ── Render loop ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!active) {
-      if (G.current.raf) { cancelAnimationFrame(G.current.raf); G.current.raf = null; }
-      return;
-    }
+    if (!active) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const ROT = 0.05, SPD = 0.07;
 
-    // Draw initial idle frame
     const s = G.current;
     drawScene(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
 
     const loop = () => {
       const s = G.current;
       const k = s.keys, b = s.btns;
-
       const fwd   = k.has('arrowup')    || k.has('w') || b.has('w');
       const back  = k.has('arrowdown')  || k.has('s') || b.has('s');
       const left  = k.has('arrowleft')  || k.has('a') || b.has('a');
@@ -240,67 +232,44 @@ export default function Cub3DGame({ active }) {
     return () => { cancelAnimationFrame(G.current.raf); G.current.raf = null; };
   }, [active]);
 
-  // On-screen button helpers
-  const press   = key => () => G.current.btns.add(key);
+  const press   = key => () => { G.current.btns.add(key); if (!G.current.playing) { G.current.playing = true; setPlaying(true); } };
   const release = key => () => G.current.btns.delete(key);
 
   return (
-    <div
-      ref={wrapRef}
-      tabIndex={0}                    // ← makes div focusable, same as SoLong
-      onKeyDown={handleKeyDown}       // ← fires sync, preventDefault blocks scroll
-      onKeyUp={handleKeyUp}
-      onBlur={handleBlur}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none' }}
-    >
-      {/* Canvas viewport */}
+    <div ref={wrapRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
         <canvas
           ref={canvasRef}
-          width={560}
-          height={360}
+          width={560} height={360}
           onClick={handleClick}
           style={{
             display: 'block', width: '100%', height: 'auto',
             border: `1px solid ${playing ? 'rgba(0,212,255,0.55)' : 'var(--border)'}`,
-            borderRadius: 6,
-            cursor: playing ? 'crosshair' : 'pointer',
-            outline: 'none',
-            transition: 'border-color .2s',
+            borderRadius: 6, cursor: playing ? 'crosshair' : 'pointer',
+            outline: 'none', transition: 'border-color .2s',
           }}
         />
-
-        {/* Click-to-play overlay */}
         {!playing && (
-          <div
-            onClick={handleClick}
-            style={{
-              position: 'absolute', inset: 0, borderRadius: 6, cursor: 'pointer',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 12,
-              background: 'rgba(3,5,12,0.75)',
-            }}
-          >
+          <div onClick={handleClick} style={{
+            position: 'absolute', inset: 0, borderRadius: 6, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 12,
+            background: 'rgba(3,5,12,0.75)',
+          }}>
             <div style={{
               fontFamily: 'var(--mono)', fontSize: 11, color: '#00d4ff',
               letterSpacing: 2, textTransform: 'uppercase',
               background: 'rgba(0,212,255,0.08)',
               border: '1px solid rgba(0,212,255,0.32)',
               padding: '10px 24px', borderRadius: 4,
-            }}>
-              ▶ CLICK TO PLAY
-            </div>
-            <div style={{
-              fontFamily: 'var(--mono)', fontSize: 9,
-              color: 'rgba(0,212,255,0.35)', letterSpacing: 1.5,
-            }}>
+            }}>▶ CLICK TO PLAY</div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'rgba(0,212,255,0.35)', letterSpacing: 1.5 }}>
               WASD · ARROWS · OR TAP BUTTONS BELOW
             </div>
           </div>
         )}
       </div>
 
-      {/* On-screen D-pad */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <Btn label="↑" onPress={press('w')}  onRelease={release('w')} />
         <div style={{ display: 'flex', gap: 4 }}>
@@ -313,12 +282,9 @@ export default function Cub3DGame({ active }) {
       <div style={{
         fontFamily: 'var(--mono)', fontSize: 9,
         color: playing ? 'rgba(0,212,255,0.5)' : '#2a4055',
-        letterSpacing: 1.5, textTransform: 'uppercase',
-        transition: 'color .3s',
+        letterSpacing: 1.5, textTransform: 'uppercase', transition: 'color .3s',
       }}>
-        {playing
-          ? 'WASD / ARROWS OR TAP BUTTONS · CLICK OUTSIDE TO STOP'
-          : 'CLICK VIEWPORT OR TAP BUTTONS TO PLAY'}
+        {playing ? 'WASD / ARROWS OR TAP BUTTONS · CLICK OUTSIDE TO STOP' : 'CLICK VIEWPORT OR TAP BUTTONS TO PLAY'}
       </div>
     </div>
   );
