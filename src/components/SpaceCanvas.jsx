@@ -17,7 +17,9 @@ function mkRng(seed) {
 // ── Static nebula — drawn ONCE to offscreen canvas ────────────────
 // NOTE: green airglow is NOT here — it lives in the animated layer
 function buildNebula(W, H) {
-  const off = new OffscreenCanvas(W, H);
+  const off = document.createElement('canvas');
+  off.width  = W;
+  off.height = H;
   const ctx = off.getContext('2d');
 
   // 1. Base black
