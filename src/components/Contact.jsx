@@ -2,7 +2,7 @@ export default function Contact() {
   const links = [
     { icon: '✉', label: 'houdaifadrahm@gmail.com', sub: 'Email', href: 'mailto:houdaifadrahm@gmail.com' },
     { icon: '↗', label: 'github.com/Houdaifa1', sub: 'GitHub', href: 'https://github.com/Houdaifa1' },
-    { icon: 'in', label: 'linkedin.com/in/houdaifa-drahm-25932b21a', sub: 'LinkedIn', href: 'https://www.linkedin.com/in/houdaifa-drahm-25932b21a' },
+    { icon: 'in', label: 'linkedin.com/in/houdaifa-drahm', sub: 'LinkedIn', href: 'https://linkedin.com/in/houdaifa-drahm' },
     { icon: '☎', label: '+212 644 645 877', sub: 'Phone', href: 'tel:+212644645877' },
   ];
 
