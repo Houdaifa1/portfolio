@@ -1,17 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ─────────────────────────────────────────────────────────────────
-//  Cub3DGame — bulletproof input, works in Brave / Safari / Firefox
+//  Cub3DGame — input fixed to mirror SoLongGame's proven pattern:
 //
-//  KEY INSIGHT: never rely on canvas DOM focus.
-//  Instead:
-//    • A simple `playing` boolean ref tracks whether the user
-//      has clicked "play". When true, window keydown/keyup listeners
-//      are registered and feed keys into the game loop.
-//    • On-screen D-pad buttons feed the same input set, so touch
-//      users and anyone whose keyboard silently drops events still
-//      get full control.
-//    • Click outside the wrapper → playing = false, listeners removed.
+//  KEY FIX: Instead of window-level listeners gated by a `playing`
+//  boolean (async, races, doesn't block scroll), we use a focusable
+//  wrapper div (tabIndex=0) with onKeyDown/onKeyUp directly on it —
+//  exactly like SoLong. Click → focus() synchronously. React calls
+//  e.preventDefault() before the browser scrolls. Works everywhere.
 // ─────────────────────────────────────────────────────────────────
 
 const MAP = [
@@ -112,7 +108,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   ctx.stroke();
 }
 
-// ── D-pad button — works on mouse, touch, stylus ─────────────────
+// ── D-pad button ─────────────────────────────────────────────────
 function Btn({ label, onPress, onRelease }) {
   return (
     <div
@@ -139,84 +135,68 @@ function Btn({ label, onPress, onRelease }) {
   );
 }
 
-export default function Cub3DGame({ active }) {
-  const canvasRef = useRef(null);
-  const wrapRef   = useRef(null);
+const GAME_KEYS = new Set([
+  'arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' ',
+]);
 
-  // All game state + input in one stable ref — no re-render on mutation
+export default function Cub3DGame({ active }) {
+  const canvasRef  = useRef(null);
+  const wrapRef    = useRef(null);
+  const [playing, setPlaying] = useState(false);
+
+  // All mutable game state in one ref — no re-render on mutation
   const G = useRef({
     px: 1.5, py: 1.5,
     dx: 1,   dy: 0,
     cx: 0,   cy: 0.6,
-    keys: new Set(),   // currently held keyboard keys (lowercased)
-    btns: new Set(),   // currently held on-screen buttons
-    playing: false,
+    keys: new Set(),   // held keyboard keys (lowercased)
+    btns: new Set(),   // held on-screen buttons
     raf: null,
   });
 
-  const [playing, setPlaying] = useState(false);
-
-  // ── Start playing ─────────────────────────────────────────────
-  const startPlaying = useCallback((e) => {
-    if (e) e.stopPropagation();
-    G.current.playing = true;
-    G.current.keys.clear();
-    G.current.btns.clear();
+  // ── Focus wrapper on click (same trick as SoLong) ─────────────
+  const handleClick = useCallback((e) => {
+    e.stopPropagation();
+    wrapRef.current?.focus();
     setPlaying(true);
   }, []);
 
-  // ── Stop playing ──────────────────────────────────────────────
-  const stopPlaying = useCallback(() => {
-    G.current.playing = false;
-    G.current.keys.clear();
-    G.current.btns.clear();
-    setPlaying(false);
+  // ── onKeyDown on the wrapper div — fires BEFORE browser scroll ─
+  const handleKeyDown = useCallback((e) => {
+    const k = e.key.toLowerCase();
+    if (GAME_KEYS.has(k)) {
+      e.preventDefault();   // ← stops page scroll, same as SoLong
+      e.stopPropagation();
+      G.current.keys.add(k);
+    }
   }, []);
 
-  // ── Click-outside detection ───────────────────────────────────
+  const handleKeyUp = useCallback((e) => {
+    G.current.keys.delete(e.key.toLowerCase());
+  }, []);
+
+  // ── Blur → stop playing ───────────────────────────────────────
+  const handleBlur = useCallback((e) => {
+    // Only deactivate if focus truly left our subtree
+    if (!wrapRef.current?.contains(e.relatedTarget)) {
+      setPlaying(false);
+      G.current.keys.clear();
+      G.current.btns.clear();
+    }
+  }, []);
+
+  // ── Auto-focus when parent makes this tab active ──────────────
   useEffect(() => {
-    if (!active) return;
-    const onDown = e => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
-        stopPlaying();
-      }
-    };
-    document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [active, stopPlaying]);
-
-  // ── Window keyboard listeners ─────────────────────────────────
-  // Registered on WINDOW with capture:true — never depends on canvas
-  // having DOM focus. This is the only thing that reliably works in
-  // Brave (and every other browser). Keys are lowercased so we don't
-  // need to handle 'W' vs 'w' separately in the loop.
-  useEffect(() => {
-    if (!active) return;
-
-    const GAME_KEYS = new Set([
-      'arrowup','arrowdown','arrowleft','arrowright',
-      'w','a','s','d',' ',
-    ]);
-
-    const onKeyDown = e => {
-      if (!G.current.playing) return;
-      const k = e.key.toLowerCase();
-      if (GAME_KEYS.has(k)) e.preventDefault();
-      G.current.keys.add(k);
-    };
-    const onKeyUp = e => {
-      G.current.keys.delete(e.key.toLowerCase());
-    };
-
-    window.addEventListener('keydown', onKeyDown, { capture: true });
-    window.addEventListener('keyup',   onKeyUp,   { capture: true });
-    return () => {
-      window.removeEventListener('keydown', onKeyDown, { capture: true });
-      window.removeEventListener('keyup',   onKeyUp,   { capture: true });
-    };
+    if (active) {
+      wrapRef.current?.focus();
+    } else {
+      setPlaying(false);
+      G.current.keys.clear();
+      G.current.btns.clear();
+    }
   }, [active]);
 
-  // ── Game loop — runs whenever active is true ──────────────────
+  // ── Game loop ─────────────────────────────────────────────────
   useEffect(() => {
     if (!active) {
       if (G.current.raf) { cancelAnimationFrame(G.current.raf); G.current.raf = null; }
@@ -228,7 +208,7 @@ export default function Cub3DGame({ active }) {
     const W = canvas.width, H = canvas.height;
     const ROT = 0.05, SPD = 0.07;
 
-    // Draw an initial idle frame right away
+    // Draw initial idle frame
     const s = G.current;
     drawScene(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
 
@@ -260,9 +240,6 @@ export default function Cub3DGame({ active }) {
     return () => { cancelAnimationFrame(G.current.raf); G.current.raf = null; };
   }, [active]);
 
-  // Deactivate when parent sets active=false
-  useEffect(() => { if (!active) stopPlaying(); }, [active, stopPlaying]);
-
   // On-screen button helpers
   const press   = key => () => G.current.btns.add(key);
   const release = key => () => G.current.btns.delete(key);
@@ -270,7 +247,11 @@ export default function Cub3DGame({ active }) {
   return (
     <div
       ref={wrapRef}
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
+      tabIndex={0}                    // ← makes div focusable, same as SoLong
+      onKeyDown={handleKeyDown}       // ← fires sync, preventDefault blocks scroll
+      onKeyUp={handleKeyUp}
+      onBlur={handleBlur}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none' }}
     >
       {/* Canvas viewport */}
       <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
@@ -278,7 +259,7 @@ export default function Cub3DGame({ active }) {
           ref={canvasRef}
           width={560}
           height={360}
-          onClick={startPlaying}
+          onClick={handleClick}
           style={{
             display: 'block', width: '100%', height: 'auto',
             border: `1px solid ${playing ? 'rgba(0,212,255,0.55)' : 'var(--border)'}`,
@@ -292,7 +273,7 @@ export default function Cub3DGame({ active }) {
         {/* Click-to-play overlay */}
         {!playing && (
           <div
-            onClick={startPlaying}
+            onClick={handleClick}
             style={{
               position: 'absolute', inset: 0, borderRadius: 6, cursor: 'pointer',
               display: 'flex', flexDirection: 'column',
@@ -319,7 +300,7 @@ export default function Cub3DGame({ active }) {
         )}
       </div>
 
-      {/* On-screen D-pad — always visible, works mouse + touch */}
+      {/* On-screen D-pad */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
         <Btn label="↑" onPress={press('w')}  onRelease={release('w')} />
         <div style={{ display: 'flex', gap: 4 }}>
