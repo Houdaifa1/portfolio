@@ -56,16 +56,10 @@ export default function SpaceCanvas() {
           varying vec3 vPos;
           varying vec2 vUv;
 
-          // ── Hash & noise ──────────────────────────────────────────────
           float hash(vec2 p) {
             p = fract(p * vec2(234.34, 435.345));
             p += dot(p, p + 34.23);
             return fract(p.x * p.y);
-          }
-          float hash3(vec3 p) {
-            p = fract(p * vec3(443.8975, 397.2973, 491.1871));
-            p += dot(p, p.yxz + 19.19);
-            return fract(p.x * p.z);
           }
           float noise(vec2 p) {
             vec2 i = floor(p), f = fract(p);
@@ -85,18 +79,16 @@ export default function SpaceCanvas() {
             }
             return v;
           }
-          float fbm3(vec2 p) {
+          float fbmR(vec2 p) {
             float v = 0.0, a = 0.5;
-            mat2 rot = mat2(cos(0.5), -sin(0.5), sin(0.5), cos(0.5));
-            for (int i = 0; i < 8; i++) {
+            mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
+            for (int i = 0; i < 7; i++) {
               v += a * noise(p);
               p = rot * p * 2.1 + vec2(3.1, 7.4);
               a *= 0.48;
             }
             return v;
           }
-
-          // ── Spherical coords ──────────────────────────────────────────
           vec2 sphereUV(vec3 dir) {
             dir = normalize(dir);
             float lon = atan(dir.z, dir.x);
@@ -107,81 +99,80 @@ export default function SpaceCanvas() {
           void main() {
             vec3 dir = normalize(vPos);
             vec2 uv = sphereUV(dir);
+            float t = uTime * 0.0008; // very slow drift
 
-            // ── Slow time drift ───────────────────────────────────────
-            float t = uTime * 0.012;
-            vec2 uvd = uv + vec2(t * 0.08, t * 0.03);
+            // ── Pure black — space is dark ────────────────────────────
+            vec3 col = vec3(0.0, 0.0, 0.003);
 
-            // ── Base deep space black ─────────────────────────────────
-            vec3 col = vec3(0.0, 0.0, 0.008);
+            // ── Galactic band ─────────────────────────────────────────
+            // Tilted plane — diagonal like in the photos
+            float band = dir.y * 0.55 - dir.x * 0.25 + dir.z * 0.18;
+            float mwCore = exp(-band * band * 22.0);  // very tight bright core
+            float mwWide = exp(-band * band * 3.5);   // wide faint halo
 
-            // ── Milky Way band ────────────────────────────────────────
-            // Diagonal galactic plane band
-            float band = dir.y * 0.6 - dir.x * 0.3 + dir.z * 0.2;
-            float mwCore = exp(-band * band * 18.0); // tight core
-            float mwHalo = exp(-band * band * 4.0);  // wide halo
+            float n1 = fbm(uv * vec2(5.0, 10.0) + vec2(t, 0.0));
+            float n2 = fbmR(uv * vec2(3.5, 7.0) + vec2(0.3, t * 0.7));
+            float n3 = fbm(uv * vec2(8.0, 16.0) + vec2(t * 1.2, 0.5));
 
-            // Noise to break it up — dense star clouds
-            float mwNoise = fbm(uv * vec2(6.0, 12.0) + vec2(t * 0.4, 0.0));
-            float mwNoise2 = fbm3(uv * vec2(4.0, 8.0) + vec2(0.5, t * 0.3));
+            // ── CORE: warm yellow-white bulge (image 1 center bright spot)
+            // Keep it DIM — a glow, not a sun
+            col += vec3(0.28, 0.22, 0.14) * mwCore * n1 * 0.9;
+            col += vec3(0.18, 0.16, 0.12) * mwCore * 0.5;
 
-            // Milky Way colors:
-            // Core: warm white/yellow-white (galactic bulge)
-            // Halo: blue-white
-            // Outer: faint blue
-            vec3 mwCoreColor = vec3(0.92, 0.82, 0.65) * mwCore * mwNoise * 1.8;
-            vec3 mwHaloColor = vec3(0.38, 0.52, 0.88) * mwHalo * mwNoise2 * 0.55;
-            vec3 mwFaint = vec3(0.12, 0.18, 0.42) * mwHalo * 0.35;
+            // ── HALO: blue-white arm glow (image 2 — the blue pillar)
+            // Subtle, not neon
+            col += vec3(0.06, 0.10, 0.22) * mwWide * n2 * 0.7;
+            col += vec3(0.04, 0.07, 0.18) * mwWide * 0.4;
 
-            col += mwCoreColor + mwHaloColor + mwFaint;
+            // ── RED/CRIMSON dust clouds (image 1 — Spitzer infrared)
+            // The reddish blobs scattered through the band
+            float redN = fbmR(uv * 2.8 + vec2(1.5, t * 0.5));
+            float redN2 = fbm(uv * 1.8 + vec2(t * 0.3, 2.1));
+            float redMask = mwWide * redN * redN2;
+            col += vec3(0.22, 0.03, 0.01) * redMask * 0.8;   // deep crimson
+            col += vec3(0.16, 0.02, 0.04) * mwWide * fbm(uv * 4.0 + vec2(2.0, t * 0.4)) * n1 * 0.5;
+            // Pink blobs at edges
+            col += vec3(0.12, 0.02, 0.06) * mwWide * fbmR(uv * 5.5 + vec2(t * 0.6, 3.0)) * 0.35;
 
-            // ── Dark dust lanes cutting through the band ───────────────
-            // (the black rifts you see in image 1)
-            float dustLane1 = exp(-(band + 0.025) * (band + 0.025) * 600.0);
-            float dustLane2 = exp(-(band - 0.018) * (band - 0.018) * 800.0);
-            float dustNoise = fbm(uv * vec2(8.0, 20.0));
-            col *= 1.0 - dustLane1 * dustNoise * 1.4;
-            col *= 1.0 - dustLane2 * (1.0 - dustNoise) * 0.9;
+            // ── DARK ABSORPTION LANES — the black rifts (image 1)
+            // These SUBTRACT light — the dark streaks cutting through
+            float lane1 = exp(-(band + 0.022) * (band + 0.022) * 900.0);
+            float lane2 = exp(-(band - 0.015) * (band - 0.015) * 1200.0);
+            float lane3 = exp(-(band + 0.005) * (band + 0.005) * 2000.0);
+            float laneNoise = fbm(uv * vec2(6.0, 18.0) + vec2(t * 0.8, 0.0));
+            float laneNoise2 = fbm(uv * vec2(10.0, 25.0) + vec2(0.0, t * 0.6));
+            col *= 1.0 - lane1 * laneNoise * 1.6;
+            col *= 1.0 - lane2 * laneNoise2 * 1.2;
+            col *= 1.0 - lane3 * (1.0 - laneNoise) * 0.8;
 
-            // ── Infrared dust clouds — reds/pinks (image 1 Spitzer) ────
-            float rNoise = fbm3(uv * 3.5 + vec2(1.2, t * 0.15));
-            float rNoise2 = fbm(uv * 2.0 + vec2(t * 0.1, 2.3));
-            // Red/crimson dust blobs near galactic plane
-            float redDust = mwHalo * rNoise * rNoise2;
-            col += vec3(0.45, 0.04, 0.02) * redDust * 0.6;
-            col += vec3(0.35, 0.08, 0.12) * mwHalo * fbm(uv * 5.0 + vec2(3.0, t * 0.2)) * 0.3;
+            // ── Faint blue deep-space field (image 2 background sky color)
+            float deepBlue = fbmR(uv * 1.2 + vec2(t * 0.2, t * 0.15));
+            col += vec3(0.01, 0.02, 0.06) * deepBlue * (1.0 - mwCore) * 0.6;
 
-            // ── Blue nebula regions ────────────────────────────────────
-            float bNoise = fbm3(uv * 2.8 + vec2(t * 0.06, 1.7));
-            float bNoise2 = fbm(uv * 1.5 + vec2(5.0, t * 0.08));
-            col += vec3(0.02, 0.08, 0.35) * bNoise * bNoise2 * 0.5;
-            // Cyan-teal wisps
-            col += vec3(0.0, 0.18, 0.22) * fbm(uv * 4.0 + vec2(t * 0.05, 4.0)) * fbm3(uv * 3.0) * 0.4;
+            // ── Faint purple/violet patches
+            col += vec3(0.05, 0.01, 0.08) * fbm(uv * 2.5 + vec2(5.0, t * 0.3)) * fbmR(uv * 1.8) * 0.25;
 
-            // ── Faint purple/violet regions ────────────────────────────
-            col += vec3(0.12, 0.02, 0.22) * fbm3(uv * 2.2 + vec2(6.0, t * 0.07)) * 0.3;
+            // ── Micro stars — packed haze (the dense star fields in both images)
+            // Very sharp, tiny, like real stars. NOT glowing balls.
+            float s1 = pow(hash(floor(uv * 2200.0)), 16.0);
+            float s2 = pow(hash(floor(uv * 3400.0 + vec2(41.0, 83.0))), 20.0);
+            float s3 = pow(hash(floor(uv * 900.0 + vec2(19.0, 61.0))), 12.0);
+            float s4 = pow(hash(floor(uv * 5000.0 + vec2(7.0, 29.0))), 24.0);
+            // Stars denser in the milky way band
+            float mwDensity = 0.4 + mwWide * 0.6;
+            col += vec3(0.75, 0.80, 0.95) * s1 * mwDensity;
+            col += vec3(0.85, 0.88, 1.00) * s2 * mwDensity * 0.8;
+            col += vec3(1.00, 0.92, 0.78) * s3 * 0.5; // warm stars scattered
+            col += vec3(0.90, 0.92, 1.00) * s4 * mwDensity * 0.6;
 
-            // ── Green airglow near galactic horizon (image 2) ──────────
-            float horizon = exp(-abs(dir.y + 0.15) * 8.0);
-            col += vec3(0.02, 0.18, 0.08) * horizon * fbm(uv * 6.0 + vec2(t * 0.2, 0.0)) * 0.35;
+            // ── Filmic tone mapping — dark exposure like real astrophoto
+            // Low exposure: blacks stay black, only brightest things show
+            col = col * 1.8; // exposure
+            col = col / (col + vec3(0.35)); // reinhard — prevents blowout
+            col = pow(col, vec3(1.1)); // slight contrast lift
 
-            // ── Micro star field embedded in shader ────────────────────
-            // These are the extremely faint background stars — billions of them
-            // packed so dense they look like a haze
-            float microStars = pow(hash(floor(uv * 1800.0)), 14.0);
-            float microStars2 = pow(hash(floor(uv * 2600.0 + vec2(33.0, 71.0))), 18.0);
-            float microStars3 = pow(hash(floor(uv * 800.0 + vec2(17.0, 53.0))), 10.0);
-            col += vec3(0.8, 0.85, 1.0) * microStars * 1.8;
-            col += vec3(0.9, 0.9, 1.0) * microStars2 * 1.2;
-            col += vec3(1.0, 0.95, 0.85) * microStars3 * 0.6 * (0.5 + mwHalo * 0.5);
-
-            // ── Tone mapping — make it feel like a real photo exposure ──
-            // Filmic: lifts blacks slightly, compresses bright areas
-            col = col / (col + vec3(0.18));
-            col = pow(col, vec3(0.92)); // slight gamma lift
-
-            // Keep it dark — space is BLACK
-            col = clamp(col, vec3(0.0), vec3(1.0));
+            // Clamp hard — no blown highlights
+            col = clamp(col, vec3(0.0), vec3(0.85));
 
             gl_FragColor = vec4(col, 1.0);
           }
@@ -255,12 +246,9 @@ export default function SpaceCanvas() {
             vec2 uv = gl_PointCoord - 0.5;
             float d = length(uv);
             if (d > 0.5) discard;
-            // Soft circle — bright center fading out
-            float alpha = 1.0 - smoothstep(0.0, 0.5, d);
-            alpha = pow(alpha, 1.4);
-            // Glow halo
-            float glow = exp(-d * 6.0) * 0.35;
-            gl_FragColor = vec4(vColor, alpha + glow);
+            float alpha = 1.0 - smoothstep(0.0, 0.42, d);
+            alpha = pow(alpha, 2.2);
+            gl_FragColor = vec4(vColor * 0.85, alpha);
           }
         `,
         transparent: true,
@@ -270,17 +258,17 @@ export default function SpaceCanvas() {
       });
 
       // Layer 1: Far mid-field stars (400 units away)
-      const geo1 = makeStars(3000, 400, 1.2, 3.5, blueWhite);
+      const geo1 = makeStars(2500, 400, 0.8, 2.2, blueWhite);
       starPoints = new THREE.Points(geo1, starShader.clone());
       scene.add(starPoints);
 
       // Layer 2: Mid stars (200 units)
-      const geo2 = makeStars(800, 200, 2.0, 5.5, blueWhite);
+      const geo2 = makeStars(600, 200, 1.2, 3.2, blueWhite);
       starPoints2 = new THREE.Points(geo2, starShader.clone());
       scene.add(starPoints2);
 
       // Layer 3: Close bright stars (80 units) — most parallax
-      const geo3 = makeStars(120, 80, 3.5, 9.0, blueWhite);
+      const geo3 = makeStars(80, 80, 2.0, 5.5, blueWhite);
       starPoints3 = new THREE.Points(geo3, starShader.clone());
       scene.add(starPoints3);
 
