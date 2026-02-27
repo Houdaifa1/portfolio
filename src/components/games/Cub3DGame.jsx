@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const MAP = [
   [1,1,1,1,1,1,1,1,1,1],
@@ -12,18 +12,22 @@ const MAP = [
   [1,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1],
 ];
-const ROWS = MAP.length, COLS = MAP[0].length;
+const ROWS = MAP.length, COLS_M = MAP[0].length;
 
-function rot(x, y, a) {
+// Canvas uses y-axis pointing DOWN.
+// Rotating by +angle = clockwise = turning RIGHT.
+// Rotating by -angle = counter-clockwise = turning LEFT.
+function rotVec(x, y, a) {
   const c = Math.cos(a), s = Math.sin(a);
   return [x * c - y * s, x * s + y * c];
 }
-function free(x, y) {
+
+function open(x, y) {
   const mx = Math.floor(x), my = Math.floor(y);
-  return my >= 0 && my < ROWS && mx >= 0 && mx < COLS && MAP[my][mx] === 0;
+  return my >= 0 && my < ROWS && mx >= 0 && mx < COLS_M && MAP[my][mx] === 0;
 }
 
-function draw(ctx, W, H, px, py, dx, dy, cx, cy) {
+function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   // Sky
   const sky = ctx.createLinearGradient(0, 0, 0, H / 2);
   sky.addColorStop(0, '#020408'); sky.addColorStop(1, '#060d1a');
@@ -33,7 +37,7 @@ function draw(ctx, W, H, px, py, dx, dy, cx, cy) {
   flr.addColorStop(0, '#050810'); flr.addColorStop(1, '#020305');
   ctx.fillStyle = flr; ctx.fillRect(0, H / 2, W, H / 2);
 
-  // Raycasting
+  // DDA raycasting
   for (let col = 0; col < W; col++) {
     const camX = 2 * col / W - 1;
     const rdx = dx + cx * camX, rdy = dy + cy * camX;
@@ -49,10 +53,13 @@ function draw(ctx, W, H, px, py, dx, dy, cx, cy) {
       else           { sdy += ddy; my += sy; side = 1; }
       if (MAP[my]?.[mx] === 1) break;
     }
-    const pd = side === 0 ? (mx - px + (1 - sx) / 2) / rdx : (my - py + (1 - sy) / 2) / rdy;
+    const pd = side === 0
+      ? (mx - px + (1 - sx) / 2) / rdx
+      : (my - py + (1 - sy) / 2) / rdy;
     const wh = Math.min(H, Math.floor(H / Math.max(pd, 0.01)));
     const wt = Math.floor((H - wh) / 2);
-    const br = Math.max(0, 1 - pd / 8) * (side ? 0.45 : 1.0);
+    const br  = Math.max(0, 1 - pd / 8) * (side === 1 ? 0.45 : 1.0);
+    // Cyan-blue palette matching the site accent colors
     ctx.fillStyle = `rgb(0,${Math.floor(80 + 132 * br)},${Math.floor(160 + 95 * br)})`;
     ctx.fillRect(col, wt, 1, wh);
     if (wh > 4) {
@@ -62,13 +69,13 @@ function draw(ctx, W, H, px, py, dx, dy, cx, cy) {
   }
 
   // Minimap
-  const MS = 10, mmx = W - COLS * MS - 8, mmy = 8;
+  const MS = 10, mmx = W - COLS_M * MS - 8, mmy = 8;
   ctx.fillStyle = 'rgba(2,4,10,0.9)';
-  ctx.fillRect(mmx - 2, mmy - 2, COLS * MS + 4, ROWS * MS + 4);
+  ctx.fillRect(mmx - 2, mmy - 2, COLS_M * MS + 4, ROWS * MS + 4);
   ctx.strokeStyle = 'rgba(0,180,255,0.22)'; ctx.lineWidth = 1;
-  ctx.strokeRect(mmx - 2, mmy - 2, COLS * MS + 4, ROWS * MS + 4);
-  MAP.forEach((row, y) => row.forEach((cell, x) => {
-    ctx.fillStyle = cell ? '#0a1828' : '#030609';
+  ctx.strokeRect(mmx - 2, mmy - 2, COLS_M * MS + 4, ROWS * MS + 4);
+  MAP.forEach((row, y) => row.forEach((c, x) => {
+    ctx.fillStyle = c ? '#0a1828' : '#030609';
     ctx.fillRect(mmx + x * MS, mmy + y * MS, MS - 1, MS - 1);
   }));
   const ppx = mmx + px * MS, ppy = mmy + py * MS;
@@ -81,174 +88,125 @@ function draw(ctx, W, H, px, py, dx, dy, cx, cy) {
   ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + (dx + cx) * fl2, ppy + (dy + cy) * fl2);
   ctx.stroke();
   ctx.strokeStyle = 'rgba(0,212,255,0.75)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + dx * fl2 * 0.6, ppy + dy * fl2 * 0.6);
+  ctx.beginPath();
+  ctx.moveTo(ppx, ppy); ctx.lineTo(ppx + dx * fl2 * 0.6, ppy + dy * fl2 * 0.6);
   ctx.stroke();
-}
-
-function DpadBtn({ label, k, G }) {
-  return (
-    <div
-      onPointerDown={e => { e.preventDefault(); G.current.btns.add(k); G.current.active = true; }}
-      onPointerUp={e => { e.preventDefault(); G.current.btns.delete(k); }}
-      onPointerLeave={e => { e.preventDefault(); G.current.btns.delete(k); }}
-      onPointerCancel={e => { e.preventDefault(); G.current.btns.delete(k); }}
-      style={{
-        width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,212,255,0.07)', border: '1px solid rgba(0,212,255,0.22)',
-        borderRadius: 8, color: '#00d4ff', fontSize: 20,
-        userSelect: 'none', WebkitUserSelect: 'none',
-        touchAction: 'none', cursor: 'pointer', fontFamily: 'var(--mono)',
-      }}
-    >{label}</div>
-  );
 }
 
 export default function Cub3DGame({ active }) {
   const canvasRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
+  const keysRef   = useRef(new Set());
+  const stateRef  = useRef({ px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.6 });
+  const rafRef    = useRef(null);
+  const [focused, setFocused] = useState(false);
 
-  // All game state + input in one plain ref — mutated directly, zero React overhead
-  const G = useRef({
-    px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.66,
-    keys: new Set(),
-    btns: new Set(),
-    active: false, // true once user has clicked — controls overlay only
-    raf: null,
-  });
-
-  // ── KEY LISTENERS: attached to window, capture phase, passive:false ──────────
-  // Rules:
-  //   1. ALWAYS preventDefault for game keys — no gate, no condition.
-  //      This is the ONLY way to stop scroll in every browser.
-  //   2. Only feed keys into G.keys when G.active (user clicked play).
-  //      This stops the game responding before the user clicks, but
-  //      crucially the scroll prevention fires regardless.
+  // Game loop — runs when active
   useEffect(() => {
-    if (!active) return;
-
-    const KEYS = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d',' ']);
-
-    const down = e => {
-      if (!KEYS.has(e.key)) return;
-      e.preventDefault();          // ← unconditional, always blocks scroll
-      e.stopPropagation();
-      G.current.keys.add(e.key.toLowerCase().replace('arrow', 'arrow')); // keep original case for set
-      G.current.keys.add(e.key);   // store both just in case
-    };
-    const up = e => {
-      if (!KEYS.has(e.key)) return;
-      e.preventDefault();
-      G.current.keys.delete(e.key);
-      G.current.keys.delete(e.key.toLowerCase());
-    };
-
-    window.addEventListener('keydown', down, { capture: true, passive: false });
-    window.addEventListener('keyup',   up,   { capture: true, passive: false });
-    return () => {
-      window.removeEventListener('keydown', down, { capture: true });
-      window.removeEventListener('keyup',   up,   { capture: true });
-      G.current.keys.clear();
-    };
-  }, [active]);
-
-  // ── GAME LOOP: always runs while active, reads keys directly from ref ─────────
-  useEffect(() => {
-    if (!active) {
-      if (G.current.raf) { cancelAnimationFrame(G.current.raf); G.current.raf = null; }
-      G.current.keys.clear(); G.current.btns.clear();
-      G.current.active = false;
-      setPlaying(false);
-      return;
-    }
-
+    if (!active || !canvasRef.current) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const ROT = 0.05, SPD = 0.07;
 
-    // Draw idle first frame
-    const s = G.current;
-    draw(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
-
     const loop = () => {
-      const s = G.current;
-      const k = s.keys, b = s.btns;
+      const s = stateRef.current;
+      const k = keysRef.current;
 
-      // Check keys by original case (ArrowUp etc) AND lowercase (w/a/s/d)
-      const fwd   = k.has('ArrowUp')    || k.has('arrowup')    || k.has('w') || b.has('w');
-      const back  = k.has('ArrowDown')  || k.has('arrowdown')  || k.has('s') || b.has('s');
-      const left  = k.has('ArrowLeft')  || k.has('arrowleft')  || k.has('a') || b.has('a');
-      const right = k.has('ArrowRight') || k.has('arrowright') || k.has('d') || b.has('d');
+      // RIGHT turn = clockwise = +ROT  (y-axis points down in canvas)
+      if (k.has('ArrowRight') || k.has('d')) {
+        [s.dx, s.dy] = rotVec(s.dx, s.dy, +ROT);
+        [s.cx, s.cy] = rotVec(s.cx, s.cy, +ROT);
+      }
+      // LEFT turn  = counter-clockwise = -ROT
+      if (k.has('ArrowLeft')  || k.has('a')) {
+        [s.dx, s.dy] = rotVec(s.dx, s.dy, -ROT);
+        [s.cx, s.cy] = rotVec(s.cx, s.cy, -ROT);
+      }
+      if (k.has('ArrowUp')   || k.has('w')) {
+        if (open(s.px + s.dx * SPD, s.py)) s.px += s.dx * SPD;
+        if (open(s.px, s.py + s.dy * SPD)) s.py += s.dy * SPD;
+      }
+      if (k.has('ArrowDown') || k.has('s')) {
+        if (open(s.px - s.dx * SPD, s.py)) s.px -= s.dx * SPD;
+        if (open(s.px, s.py - s.dy * SPD)) s.py -= s.dy * SPD;
+      }
 
-      if (right) { [s.dx,s.dy]=rot(s.dx,s.dy,+ROT); [s.cx,s.cy]=rot(s.cx,s.cy,+ROT); }
-      if (left)  { [s.dx,s.dy]=rot(s.dx,s.dy,-ROT); [s.cx,s.cy]=rot(s.cx,s.cy,-ROT); }
-      if (fwd)  { if(free(s.px+s.dx*SPD,s.py)) s.px+=s.dx*SPD; if(free(s.px,s.py+s.dy*SPD)) s.py+=s.dy*SPD; }
-      if (back) { if(free(s.px-s.dx*SPD,s.py)) s.px-=s.dx*SPD; if(free(s.px,s.py-s.dy*SPD)) s.py-=s.dy*SPD; }
-
-      draw(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
-      s.raf = requestAnimationFrame(loop);
+      drawScene(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
+      rafRef.current = requestAnimationFrame(loop);
     };
 
-    G.current.raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(G.current.raf); G.current.raf = null; };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => { cancelAnimationFrame(rafRef.current); rafRef.current = null; };
   }, [active]);
 
-  const handleClick = useCallback(() => {
-    G.current.active = true;
-    setPlaying(true);
-  }, []);
+  // Key handlers — attached to canvas via React props (not window).
+  // Because the canvas has tabIndex=0 and is focused, these only fire
+  // when the game is active. No global listeners, no bleed into the page.
+  const handleKeyDown = e => {
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+      e.preventDefault();  // block page scroll — works because canvas is the focused element
+    }
+    keysRef.current.add(e.key);
+  };
+
+  const handleKeyUp   = e => keysRef.current.delete(e.key);
+  const handleBlur    = () => { keysRef.current.clear(); setFocused(false); };
+  const handleFocus   = () => setFocused(true);
+  const handleClick   = e => { e.stopPropagation(); canvasRef.current?.focus(); };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, userSelect: 'none', WebkitUserSelect: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
       <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
         <canvas
           ref={canvasRef}
-          width={560} height={360}
+          width={560}
+          height={360}
+          tabIndex={0}
           onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           style={{
             display: 'block', width: '100%', height: 'auto',
-            border: `1px solid ${playing ? 'rgba(0,212,255,0.55)' : 'var(--border)'}`,
-            borderRadius: 6, cursor: 'pointer', outline: 'none',
+            border: `1px solid ${focused ? 'rgba(0,212,255,0.55)' : 'var(--border)'}`,
+            borderRadius: 6,
+            cursor: focused ? 'crosshair' : 'pointer',
+            outline: 'none',
             transition: 'border-color .2s',
           }}
         />
-        {!playing && (
-          <div onClick={handleClick} style={{
-            position: 'absolute', inset: 0, borderRadius: 6, cursor: 'pointer',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 12,
-            background: 'rgba(3,5,12,0.78)',
-          }}>
+        {!focused && (
+          <div
+            onClick={handleClick}
+            style={{
+              position: 'absolute', inset: 0, borderRadius: 6, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(3,5,12,0.72)',
+            }}
+          >
             <div style={{
               fontFamily: 'var(--mono)', fontSize: 11, color: '#00d4ff',
               letterSpacing: 2, textTransform: 'uppercase',
-              background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.32)',
+              background: 'rgba(0,212,255,0.07)',
+              border: '1px solid rgba(0,212,255,0.3)',
               padding: '10px 24px', borderRadius: 4,
-            }}>▶ CLICK TO PLAY</div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'rgba(0,212,255,0.35)', letterSpacing: 1.5 }}>
-              WASD · ARROWS · OR TAP BUTTONS BELOW
+            }}>
+              ▶ CLICK TO PLAY
             </div>
           </div>
         )}
       </div>
-
-      {/* D-pad */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-        <DpadBtn label="↑" k="w" G={G} />
-        <div style={{ display: 'flex', gap: 4 }}>
-          <DpadBtn label="←" k="a" G={G} />
-          <DpadBtn label="↓" k="s" G={G} />
-          <DpadBtn label="→" k="d" G={G} />
-        </div>
-      </div>
-
       <div style={{
-        fontFamily: 'var(--mono)', fontSize: 9,
-        color: playing ? 'rgba(0,212,255,0.5)' : '#2a4055',
+        display: 'flex', gap: 18, fontFamily: 'var(--mono)', fontSize: 9,
+        color: focused ? 'rgba(0,212,255,0.65)' : '#3a5470',
         letterSpacing: 1.5, textTransform: 'uppercase', transition: 'color .3s',
       }}>
-        {playing ? 'WASD / ARROWS TO MOVE' : 'CLICK VIEWPORT OR TAP BUTTONS TO PLAY'}
+        <span>W / ↑ &nbsp;forward</span>
+        <span>S / ↓ &nbsp;back</span>
+        <span>A / ← &nbsp;turn left</span>
+        <span>D / → &nbsp;turn right</span>
+        {focused && <span style={{ color: '#243850' }}>· click outside to release</span>}
       </div>
     </div>
   );
