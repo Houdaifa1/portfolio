@@ -1,352 +1,417 @@
 import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
 
 // ══════════════════════════════════════════════════════════════════
-//  MILKY WAY SPACE  — exact background from portfolio
-//  warm amber/orange dust lanes, teal-blue star pools,
-//  dark molecular clouds, diagonal galactic band,
-//  deep black base. NO mouse interaction. Slow organic drift.
-//  Spectral stars + galaxy spiral + occasional shooting stars.
+//  SpaceCanvas — Canvas 2D only. Zero external deps. No WebGL.
+//
+//  Visual: matches the portfolio background —
+//    diagonal galactic band · warm amber dust lanes ·
+//    teal-blue star pools · dark molecular clouds ·
+//    spectral stars with twinkle · occasional shooting stars
+//
+//  PERF strategy:
+//    • Nebula + static stars → drawn ONCE to an offscreen canvas
+//    • Each frame → blit offscreen (1 drawImage call) + draw
+//      twinkling bright stars + update shooting streaks
+//    • No pixel-level work per frame → stays at 60fps
 // ══════════════════════════════════════════════════════════════════
+
+// ── Seeded deterministic random ──────────────────────────────────
+function mkRng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+// ── Value noise (1 octave) ────────────────────────────────────────
+// Used to give organic variation to gradient positions / sizes
+function hash2(x, y) {
+  let h = (((x * 374761393 + y * 668265263) >>> 0) ^ ((x * 374761393 + y * 668265263) >>> 13));
+  h = Math.imul(h, 1274126177) >>> 0;
+  return (h >>> 0) / 4294967296;
+}
+
+// ── Draw the static nebula background to an offscreen canvas ─────
+function buildNebula(W, H) {
+  const off = new OffscreenCanvas(W, H);
+  const ctx = off.getContext('2d');
+  const rng = mkRng(0xDEAD1337);
+
+  // 1. BASE — deep black
+  ctx.fillStyle = '#000408';
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. COLD AMBIENT SKY — deep indigo blue
+  const sky = ctx.createRadialGradient(W * 0.4, H * 0.1, 0, W * 0.5, H * 0.5, H * 1.3);
+  sky.addColorStop(0,    'rgba(6,14,55,0.65)');
+  sky.addColorStop(0.45, 'rgba(3,8,32,0.30)');
+  sky.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // 3. DIAGONAL GALACTIC BAND — wide diffuse glow
+  // The band goes from lower-left to upper-right, like in the photo.
+  // We fake the diagonal by rotating a linear gradient strip.
+  ctx.save();
+  ctx.translate(W * 0.45, H * 0.5);
+  ctx.rotate(-0.55); // ~31° diagonal
+  const bandW = W * 0.55;
+  const bandH = H * 1.6;
+  const band = ctx.createLinearGradient(-bandW / 2, 0, bandW / 2, 0);
+  band.addColorStop(0,    'rgba(0,0,0,0)');
+  band.addColorStop(0.25, 'rgba(14,40,110,0.20)');
+  band.addColorStop(0.45, 'rgba(25,65,160,0.28)');
+  band.addColorStop(0.50, 'rgba(40,90,200,0.32)');   // bright core
+  band.addColorStop(0.55, 'rgba(25,65,160,0.28)');
+  band.addColorStop(0.75, 'rgba(14,40,110,0.20)');
+  band.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.fillStyle = band;
+  ctx.fillRect(-bandW / 2, -bandH / 2, bandW, bandH);
+  ctx.restore();
+
+  // 4. GALACTIC CENTRE — warm amber/orange nucleus
+  const gcX = W * 0.44, gcY = H * 0.62;
+  const gc = ctx.createRadialGradient(gcX, gcY, 0, gcX, gcY, W * 0.18);
+  gc.addColorStop(0,    'rgba(220,150,40,0.50)');
+  gc.addColorStop(0.20, 'rgba(180,110,20,0.28)');
+  gc.addColorStop(0.55, 'rgba(90,50,8,0.12)');
+  gc.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.fillStyle = gc;
+  ctx.fillRect(0, 0, W, H);
+
+  // Brighter pinpoint core
+  const gcInner = ctx.createRadialGradient(gcX, gcY, 0, gcX, gcY, W * 0.06);
+  gcInner.addColorStop(0,   'rgba(255,200,90,0.45)');
+  gcInner.addColorStop(0.4, 'rgba(200,130,30,0.18)');
+  gcInner.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = gcInner;
+  ctx.fillRect(0, 0, W, H);
+
+  // 5. TEAL-BLUE star-forming regions
+  const teals = [
+    { x: 0.35, y: 0.30, r: 0.14, a: 0.32 },
+    { x: 0.42, y: 0.48, r: 0.10, a: 0.24 },
+    { x: 0.50, y: 0.22, r: 0.09, a: 0.20 },
+    { x: 0.31, y: 0.55, r: 0.12, a: 0.22 },
+  ];
+  teals.forEach(t => {
+    const g = ctx.createRadialGradient(t.x * W, t.y * H, 0, t.x * W, t.y * H, t.r * W);
+    g.addColorStop(0,   `rgba(15,140,175,${t.a})`);
+    g.addColorStop(0.4, `rgba(8,90,120,${t.a * 0.45})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  });
+
+  // 6. WARM AMBER DUST LANES — overlapping warm blobs
+  const ambers = [
+    { x: 0.41, y: 0.58, rx: 0.18, ry: 0.10, a: 0.28 },
+    { x: 0.46, y: 0.44, rx: 0.12, ry: 0.18, a: 0.22 },
+    { x: 0.38, y: 0.70, rx: 0.20, ry: 0.08, a: 0.20 },
+    { x: 0.50, y: 0.35, rx: 0.10, ry: 0.15, a: 0.18 },
+  ];
+  ambers.forEach(d => {
+    ctx.save();
+    ctx.translate(d.x * W, d.y * H);
+    ctx.scale(1, d.ry / d.rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, d.rx * W);
+    g.addColorStop(0,   `rgba(210,120,20,${d.a})`);
+    g.addColorStop(0.5, `rgba(140,70,10,${d.a * 0.4})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, d.rx * W, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // 7. COLD BLUE-GREY WISPS — outer edges
+  const wisps = [
+    { x: 0.20, y: 0.25, r: 0.22, a: 0.14 },
+    { x: 0.72, y: 0.35, r: 0.18, a: 0.12 },
+    { x: 0.15, y: 0.60, r: 0.20, a: 0.13 },
+    { x: 0.80, y: 0.55, r: 0.16, a: 0.10 },
+    { x: 0.60, y: 0.15, r: 0.18, a: 0.11 },
+  ];
+  wisps.forEach(w => {
+    const g = ctx.createRadialGradient(w.x * W, w.y * H, 0, w.x * W, w.y * H, w.r * W);
+    g.addColorStop(0,   `rgba(40,55,110,${w.a})`);
+    g.addColorStop(0.5, `rgba(20,28,65,${w.a * 0.5})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  });
+
+  // 8. DARK MOLECULAR CLOUDS — absorb light near the band
+  const darks = [
+    { x: 0.38, y: 0.42, rx: 0.08, ry: 0.12, a: 0.62 },
+    { x: 0.46, y: 0.30, rx: 0.06, ry: 0.10, a: 0.55 },
+    { x: 0.43, y: 0.55, rx: 0.07, ry: 0.08, a: 0.50 },
+    { x: 0.34, y: 0.65, rx: 0.09, ry: 0.07, a: 0.48 },
+    { x: 0.50, y: 0.47, rx: 0.05, ry: 0.09, a: 0.45 },
+  ];
+  darks.forEach(d => {
+    ctx.save();
+    ctx.translate(d.x * W, d.y * H);
+    ctx.scale(1, d.ry / d.rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, d.rx * W);
+    g.addColorStop(0,   `rgba(0,1,4,${d.a})`);
+    g.addColorStop(0.5, `rgba(0,1,4,${d.a * 0.5})`);
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, d.rx * W, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+
+  // 9. GREEN AIRGLOW at horizon
+  const airglow = ctx.createLinearGradient(0, H * 0.68, 0, H);
+  airglow.addColorStop(0,    'rgba(0,0,0,0)');
+  airglow.addColorStop(0.22, 'rgba(3,52,18,0.52)');
+  airglow.addColorStop(0.65, 'rgba(2,36,12,0.75)');
+  airglow.addColorStop(1,    'rgba(0,10,4,0.90)');
+  ctx.fillStyle = airglow;
+  ctx.fillRect(0, 0, W, H);
+
+  const airPool = ctx.createRadialGradient(W * 0.30, H * 0.91, 0, W * 0.30, H * 0.91, W * 0.26);
+  airPool.addColorStop(0,   'rgba(8,95,34,0.42)');
+  airPool.addColorStop(0.5, 'rgba(3,48,15,0.16)');
+  airPool.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = airPool;
+  ctx.fillRect(0, 0, W, H);
+
+  // 10. DENSE MILKY WAY STAR PILLAR — Gaussian cross-section packed stars
+  const pr = mkRng(0xABC99881);
+  const mwX = W * 0.43;
+  for (let i = 0; i < 6500; i++) {
+    const u1 = pr() + 1e-10, u2 = pr();
+    const gauss = Math.sqrt(-2 * Math.log(u1)) * Math.cos(Math.PI * 2 * u2);
+    const y  = pr() * H * 0.90;
+    const pX = mwX + (y / H) * W * 0.030;
+    const sp = W * (0.038 + (y / H) * 0.018);
+    const x  = pX + gauss * sp;
+    if (x < 0 || x > W) continue;
+    const dc  = Math.abs(x - pX) / sp;
+    const brt = Math.pow(Math.max(0, 1 - dc * 0.72), 1.85);
+    if (brt < 0.04) continue;
+    ctx.globalAlpha = (pr() * 0.22 + 0.06) * brt;
+    ctx.fillStyle   = dc < 0.30 ? '#cce0ff' : '#dce8ff';
+    ctx.beginPath();
+    ctx.arc(x, y, pr() * 0.22 + 0.05, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 11. BACKGROUND STAR HAZE — 8 000 faint blue-white dots
+  const br = mkRng(0x11223344);
+  for (let i = 0; i < 8000; i++) {
+    ctx.globalAlpha = br() * 0.12 + 0.02;
+    ctx.fillStyle   = '#b0c6ff';
+    ctx.beginPath();
+    ctx.arc(br() * W, br() * H * 0.96, br() * 0.20 + 0.06, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 12. MID STARS — 3 000, spectral palette
+  const SPEC = [
+    '#e4eeff','#d8e8ff','#f2f2ff','#fff8f0',
+    '#ffeedd','#ffd490','#ffb870','#ff9850',
+  ];
+  const mr = mkRng(0x55667788);
+  for (let i = 0; i < 3000; i++) {
+    ctx.globalAlpha = mr() * 0.34 + 0.12;
+    ctx.fillStyle   = SPEC[Math.floor(mr() * SPEC.length)];
+    ctx.beginPath();
+    ctx.arc(mr() * W, mr() * H * 0.93, mr() * 0.44 + 0.14, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 13. VIGNETTE — edges to near-black
+  const vig = ctx.createRadialGradient(W * 0.44, H * 0.44, H * 0.12, W * 0.44, H * 0.44, H);
+  vig.addColorStop(0,    'rgba(0,0,0,0)');
+  vig.addColorStop(0.55, 'rgba(0,0,0,0)');
+  vig.addColorStop(0.80, 'rgba(0,0,0,0.42)');
+  vig.addColorStop(1,    'rgba(0,1,5,0.94)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, W, H);
+
+  return off;
+}
+
+// ── Bright twinkling star data (animated layer) ───────────────────
+function buildBrightStars(W, H, count = 220) {
+  const COLS = ['#ffffff','#eef4ff','#fff9f0','#ffeedd','#ffd08a','#ffba70'];
+  const rng  = mkRng(0xCAFE0001);
+  return Array.from({ length: count }, () => {
+    const r   = rng() * 1.30 + 0.55;
+    const col = COLS[Math.floor(rng() * COLS.length)];
+    return {
+      x:     rng() * W,
+      y:     rng() * H * 0.90,
+      r,
+      base:  rng() * 0.42 + 0.58,       // base alpha
+      speed: rng() * 0.8 + 0.4,          // twinkle speed
+      phase: rng() * Math.PI * 2,         // twinkle phase
+      col,
+      spike: r > 1.05,                    // diffraction spike?
+      spikeLen: r * 11,
+    };
+  });
+}
 
 export default function SpaceCanvas() {
-  const canvasRef    = useRef(null);
-  const spiralMatRef = useRef(null); // set inside effect, read by RAF loop
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // ── Renderer ────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setClearColor(0, 0);
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    canvas.width  = W;
+    canvas.height = H;
 
-    const scene = new THREE.Scene();
-    const cam = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.01, 2000);
-    cam.position.set(0, 0, 10);
+    const ctx = canvas.getContext('2d');
 
-    // ── MILKY WAY NEBULA SHADER ──────────────────────────────────
-    // Palette from photo:
-    //   - deep black base
-    //   - warm amber/orange (dust lanes)
-    //   - teal-blue pools (star-forming regions)
-    //   - cold blue-grey wisps
-    //   - subtle warm-white galactic core
-    //   - dark molecular cloud patches (subtract light)
-    // Time drives ONLY slow drift. No mouse interaction.
-    const nebMat = new THREE.ShaderMaterial({
-      depthTest: false,
-      depthWrite: false,
-      uniforms: { uT: { value: 0 } },
-      vertexShader: `varying vec2 v;void main(){v=uv;gl_Position=vec4(position,1.);}`,
-      fragmentShader: `
-precision mediump float;
-uniform float uT;
-varying vec2 v;
+    // Build static nebula once
+    let nebula = buildNebula(W, H);
 
-float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5);}
-float n(vec2 p){
-  vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
-  return mix(mix(h(i),h(i+vec2(1,0)),u.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x),u.y);
-}
-float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p=p*2.08+vec2(1.7,9.2);a*=.48;}return v;}
-float fbmS(vec2 p){float v=0.,a=.5;for(int i=0;i<3;i++){v+=a*n(p);p=p*2.1+vec2(4.1,2.3);a*=.5;}return v;}
+    // Build bright star data
+    let brightStars = buildBrightStars(W, H);
 
-void main(){
-  float t=uT*.004; /* very slow */
-  vec2 uv=v;
-
-  /* diagonal galactic band (lower-left to upper-right) */
-  float band=uv.x*.55-uv.y*.75+.42;
-  float bandW=exp(-band*band*22.);   /* wide diffuse band */
-  float bandC=exp(-band*band*90.);   /* narrow bright core */
-
-  /* domain warp for organic cloud shapes */
-  vec2 q=vec2(fbm(uv*1.2+t),fbm(uv*1.2+vec2(3.8,2.1)+t*.7));
-  float f =fbm(uv*1.0+1.5*q+t*.06);
-  float f2=fbm(uv*1.6+vec2(2.1,.8)+q*.8+t*.04);
-  float f3=fbmS(uv*.7+vec2(.5,1.4)-t*.03);
-
-  /* BASE: near-black */
-  vec3 col=vec3(.005,.006,.012);
-
-  /* GALACTIC BAND glow — warm white-gold core */
-  col+=vec3(.08,.065,.035)*bandW;
-  col+=vec3(.12,.095,.045)*bandC;
-
-  /* DUST LANES: warm amber / orange-brown */
-  float dust=smoothstep(.30,.72,f)*bandW*1.4+smoothstep(.35,.68,f)*bandC*.8;
-  col+=vec3(.22,.10,.018)*dust*dust*1.8;
-  col+=vec3(.18,.07,.010)*smoothstep(.50,.78,f)*bandW*1.2;
-
-  /* TEAL-BLUE star-forming regions */
-  float teal=smoothstep(.32,.70,f2)*(.4+.6*bandW);
-  col+=vec3(.010,.090,.120)*teal*teal*1.5;
-  col+=vec3(.005,.055,.095)*smoothstep(.48,.75,f2)*.9;
-
-  /* COLD BLUE-GREY wisps — edges and upper sky */
-  float cold=smoothstep(.28,.62,f3)*(1.-bandW*.5);
-  col+=vec3(.018,.028,.060)*cold*cold*1.2;
-  col+=vec3(.010,.018,.038)*cold*.6;
-
-  /* MOLECULAR CLOUDS: dark patches that absorb light */
-  float dark1=smoothstep(.38,.60,fbm(uv*2.2+vec2(1.1,.3)+t*.02));
-  float dark2=smoothstep(.40,.62,fbm(uv*1.8+vec2(3.2,1.8)-t*.015));
-  float darkMask=(dark1*.5+dark2*.4)*bandW*1.6;
-  col*=clamp(1.-darkMask*.85,.15,1.);
-
-  /* FINE STAR TEXTURE — grainy milky texture */
-  float grain=fbmS(uv*18.+t*.2)*.5+fbmS(uv*28.+vec2(2.,1.)+t*.15)*.3;
-  col+=vec3(.05,.06,.08)*grain*grain*(bandW*.8+.3)*.6;
-
-  /* VIGNETTE */
-  float vig=length((uv-.5)*vec2(1.,.9))*1.4;
-  col*=clamp(1.1-vig*vig*.65,.05,1.);
-
-  /* slight warm colour grade */
-  col.r*=1.05;col.b*=.92;
-
-  gl_FragColor=vec4(clamp(col,0.,1.),1.);
-}`,
-    });
-
-    const nq = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), nebMat);
-    nq.renderOrder = -999;
-    nq.frustumCulled = false;
-    scene.add(nq);
-
-    // ── STARS — spectral colours (warm whites, cool blues, hints of orange) ──
-    const sVert = `
-      attribute float aS;attribute float aB;attribute vec3 aC;
-      varying vec3 vC;varying float vB;uniform float uT;
-      void main(){
-        vC=aC;
-        vB=aB*(0.93+0.07*sin(uT*.4+position.x*11.3+position.y*7.1));
-        vec4 mv=modelViewMatrix*vec4(position,1.);
-        gl_PointSize=aS*(240./-mv.z);gl_Position=projectionMatrix*mv;
-      }`;
-    const sFrag = `
-      varying vec3 vC;varying float vB;
-      void main(){
-        vec2 c=gl_PointCoord*2.-1.;float r=dot(c,c);if(r>1.)discard;
-        float a=(exp(-r*8.)+exp(-r*1.8)*.12)*vB;
-        gl_FragColor=vec4(vC,a);
-      }`;
-
-    function mkStars(N, sp, szR, cols, zR) {
-      const p = new Float32Array(N * 3);
-      const s = new Float32Array(N);
-      const b = new Float32Array(N);
-      const c = new Float32Array(N * 3);
-      for (let i = 0; i < N; i++) {
-        p[i*3]   = (Math.random() - 0.5) * sp;
-        p[i*3+1] = (Math.random() - 0.5) * sp * 0.45;
-        p[i*3+2] = zR[0] + Math.random() * (zR[1] - zR[0]);
-        s[i] = szR[0] + Math.random() * (szR[1] - szR[0]);
-        b[i] = 0.10 + Math.random() * 0.60;
-        const cl = cols[Math.floor(Math.random() * cols.length)];
-        c[i*3] = cl[0]; c[i*3+1] = cl[1]; c[i*3+2] = cl[2];
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-      g.setAttribute('aS',       new THREE.BufferAttribute(s, 1));
-      g.setAttribute('aB',       new THREE.BufferAttribute(b, 1));
-      g.setAttribute('aC',       new THREE.BufferAttribute(c, 3));
-      return new THREE.Points(g, new THREE.ShaderMaterial({
-        vertexShader: sVert,
-        fragmentShader: sFrag,
-        uniforms: { uT: { value: 0 } },
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }));
-    }
-
-    // Star colour palettes
-    const WW = [0.88, 0.90, 0.95]; // warm white
-    const BW = [0.72, 0.82, 1.00]; // blue-white
-    const CW = [0.95, 0.95, 0.88]; // cream white
-    const TB = [0.55, 0.78, 0.92]; // teal-blue
-    const AM = [1.00, 0.72, 0.38]; // amber
-    const OR = [1.00, 0.55, 0.22]; // orange
-    const SB = [0.42, 0.58, 1.00]; // steel blue
-
-    const sfs = [
-      mkStars(2200, 280, [0.25, 0.80], [WW, BW, CW, [0.80, 0.84, 0.90]], [-230, -20]),
-      mkStars(700,  190, [0.65, 1.80], [BW, WW, TB, AM],                  [-100,  -7]),
-      mkStars(200,  110, [1.50, 3.50], [SB, TB, AM, OR, BW, WW],          [ -50,  -2]),
-      mkStars(50,    65, [3.00, 6.00], [SB, AM, OR, BW],                   [ -25,   0]),
-      mkStars(12,    40, [5.50, 9.50], [SB, AM],                           [ -14,   2]),
+    // ── Shooting streaks ──────────────────────────────────────────
+    const STREAK_COLS = [
+      [0.90, 0.85, 0.72],  // warm white
+      [0.62, 0.76, 1.00],  // blue-white
     ];
-    sfs.forEach(s => scene.add(s));
-
-    // ── GALAXY SPIRAL (deep bg, very dim) ───────────────────────
-    (() => {
-      const N  = 2400;
-      const p  = new Float32Array(N * 3);
-      const an = new Float32Array(N);
-      const ra = new Float32Array(N);
-      const ar = new Float32Array(N);
-      const al = new Float32Array(N);
-      const co = new Float32Array(N * 3);
-      // Arm colours: warm amber arms, cold blue outer
-      const AC = [
-        [0.30, 0.15, 0.04],
-        [0.50, 0.18, 0.02],
-        [0.04, 0.14, 0.22],
-        [0.10, 0.22, 0.35],
-      ];
-      for (let i = 0; i < N; i++) {
-        const t = i / N;
-        const a = Math.floor(Math.random() * 4);
-        an[i] = t * Math.PI * 16 + (Math.random() - 0.5) * 0.3;
-        ra[i] = 2 + t * 20 + Math.random() * 1.2;
-        ar[i] = a;
-        p[i*3] = 0; p[i*3+1] = (Math.random() - 0.5) * 1.2 * t; p[i*3+2] = 0;
-        al[i] = (0.04 + Math.random() * 0.14) * (1 - t * 0.5);
-        const clr = AC[a];
-        const m = Math.random() * 0.25;
-        co[i*3]   = clr[0] + m * (1 - clr[0]);
-        co[i*3+1] = clr[1] + m * (1 - clr[1]);
-        co[i*3+2] = clr[2] + m * (1 - clr[2]);
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(p,  3));
-      g.setAttribute('an',       new THREE.BufferAttribute(an, 1));
-      g.setAttribute('ra',       new THREE.BufferAttribute(ra, 1));
-      g.setAttribute('ar',       new THREE.BufferAttribute(ar, 1));
-      g.setAttribute('al',       new THREE.BufferAttribute(al, 1));
-      g.setAttribute('co',       new THREE.BufferAttribute(co, 3));
-      const gMat = new THREE.ShaderMaterial({
-        uniforms: { uT: { value: 0 } },
-        vertexShader: `
-          attribute float an,ra,ar,al;attribute vec3 co;
-          varying float vA;varying vec3 vC;uniform float uT;
-          void main(){
-            float a=an+ra*.08+uT*.018+ar*3.14159;
-            vec4 mv=modelViewMatrix*vec4(cos(a)*ra,position.y,sin(a)*ra-50.,1.);
-            vA=al;vC=co;gl_PointSize=1.4*(140./-mv.z);gl_Position=projectionMatrix*mv;
-          }`,
-        fragmentShader: `
-          varying float vA;varying vec3 vC;
-          void main(){
-            vec2 c=gl_PointCoord*2.-1.;if(dot(c,c)>1.)discard;
-            gl_FragColor=vec4(vC,exp(-dot(c,c)*3.)*vA);
-          }`,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      scene.add(new THREE.Points(g, gMat));
-      // Store on ref so the loop can update uT
-      spiralMatRef.current = gMat;
-    })();
-
-    // ── SHOOTING STARS ───────────────────────────────────────────
     const streaks = [];
+
     function spawnStreak() {
-      const N  = 16;
-      const sx = (Math.random() - 0.5) * 45;
-      const sy = (Math.random() - 0.5) * 22;
-      const sz = -2 + Math.random() * 4;
-      const len = 2 + Math.random() * 7;
-      const ang = Math.PI * 0.7 + Math.random() * 0.9;
-      const dx  = Math.cos(ang) * len;
-      const dy  = Math.sin(ang) * len * 0.25;
-      const p   = new Float32Array(N * 3);
-      const pr  = new Float32Array(N);
-      for (let i = 0; i < N; i++) {
-        const t = i / (N - 1);
-        p[i*3] = sx + dx * t; p[i*3+1] = sy + dy * t; p[i*3+2] = sz;
-        pr[i] = t;
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(p,  3));
-      g.setAttribute('pr',       new THREE.BufferAttribute(pr, 1));
-      const C = Math.random() < 0.6 ? [0.9, 0.85, 0.7] : [0.6, 0.75, 1.0];
-      const mat = new THREE.ShaderMaterial({
-        vertexShader:   `attribute float pr;varying float vP;void main(){vP=pr;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-        fragmentShader: `varying float vP;uniform vec3 uC;uniform float uL;void main(){gl_FragColor=vec4(uC,(1.-vP)*vP*2.5*uL);}`,
-        uniforms: {
-          uC: { value: new THREE.Vector3(...C) },
-          uL: { value: 1.0 },
-        },
-        transparent: true,
-        depthWrite:  false,
-        blending:    THREE.AdditiveBlending,
+      const len = 60 + Math.random() * 200;
+      const ang = Math.PI * (0.72 + Math.random() * 0.32); // slightly downward
+      const sx  = Math.random() * W;
+      const sy  = Math.random() * H * 0.7;
+      const col = STREAK_COLS[Math.random() < 0.6 ? 0 : 1];
+      streaks.push({
+        x: sx, y: sy,
+        dx: Math.cos(ang) * len,
+        dy: Math.sin(ang) * len * 0.28,
+        vx: Math.cos(ang) * (1.4 + Math.random() * 1.2),
+        vy: Math.sin(ang) * (0.4 + Math.random() * 0.5),
+        life: 1.0,
+        decay: 0.018 + Math.random() * 0.022,
+        col,
       });
-      const ln = new THREE.Line(g, mat);
-      ln.userData = {
-        dec: 0.020 + Math.random() * 0.025,
-        vx:  (Math.random() - 0.5) * 0.15,
-        vy:  -(Math.random() * 0.08 + 0.03),
-      };
-      scene.add(ln);
-      streaks.push(ln);
     }
 
-    // ── ANIMATION LOOP — no mouse, slow organic drift only ───────
-    let ticker = 0;
+    function drawStreak(s) {
+      const grd = ctx.createLinearGradient(
+        s.x, s.y,
+        s.x + s.dx, s.y + s.dy
+      );
+      const [r, g, b] = s.col;
+      grd.addColorStop(0,    `rgba(${r*255|0},${g*255|0},${b*255|0},0)`);
+      grd.addColorStop(0.35, `rgba(${r*255|0},${g*255|0},${b*255|0},${s.life * 0.85})`);
+      grd.addColorStop(0.65, `rgba(${r*255|0},${g*255|0},${b*255|0},${s.life * 0.85})`);
+      grd.addColorStop(1,    `rgba(${r*255|0},${g*255|0},${b*255|0},0)`);
+      ctx.strokeStyle = grd;
+      ctx.lineWidth   = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + s.dx, s.y + s.dy);
+      ctx.stroke();
+    }
+
+    // ── Main RAF loop ─────────────────────────────────────────────
     let rafId;
-    function loop() {
+    let t0 = performance.now();
+
+    function loop(now) {
       rafId = requestAnimationFrame(loop);
-      ticker += 0.009;
+      const t = (now - t0) * 0.001; // seconds
 
-      nebMat.uniforms.uT.value = ticker;
-      sfs.forEach((s, i) => {
-        s.material.uniforms.uT.value = ticker;
-        s.rotation.y = ticker * 0.0005 * (i + 1);
+      // 1. Blit static nebula — single drawImage call
+      ctx.drawImage(nebula, 0, 0);
+
+      // 2. Bright twinkling stars
+      brightStars.forEach(s => {
+        const a = s.base * (0.72 + 0.28 * Math.sin(t * s.speed + s.phase));
+        ctx.globalAlpha = a;
+        ctx.fillStyle   = s.col;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Soft halo
+        ctx.globalAlpha = a * 0.08;
+        const halo = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 7);
+        halo.addColorStop(0, s.col);
+        halo.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4-point diffraction spike on larger stars
+        if (s.spike) {
+          ctx.lineWidth = 0.45;
+          [[0, -s.spikeLen, 0, s.spikeLen], [-s.spikeLen, 0, s.spikeLen, 0]].forEach(([x1, y1, x2, y2]) => {
+            const sg = ctx.createLinearGradient(s.x + x1, s.y + y1, s.x + x2, s.y + y2);
+            sg.addColorStop(0,    'rgba(0,0,0,0)');
+            sg.addColorStop(0.45, s.col);
+            sg.addColorStop(0.55, s.col);
+            sg.addColorStop(1,    'rgba(0,0,0,0)');
+            ctx.globalAlpha  = a * 0.16;
+            ctx.strokeStyle  = sg;
+            ctx.beginPath();
+            ctx.moveTo(s.x + x1, s.y + y1);
+            ctx.lineTo(s.x + x2, s.y + y2);
+            ctx.stroke();
+          });
+        }
       });
-      if (spiralMatRef.current) {
-        spiralMatRef.current.uniforms.uT.value = ticker;
-      }
+      ctx.globalAlpha = 1;
 
-      // Rare shooting stars
-      if (Math.random() < 0.003) spawnStreak();
+      // 3. Shooting streaks
+      if (Math.random() < 0.004) spawnStreak();
       for (let i = streaks.length - 1; i >= 0; i--) {
         const s = streaks[i];
-        s.material.uniforms.uL.value -= s.userData.dec;
-        s.position.x += s.userData.vx;
-        s.position.y += s.userData.vy;
-        if (s.material.uniforms.uL.value <= 0) {
-          scene.remove(s);
-          s.geometry.dispose();
-          s.material.dispose();
-          streaks.splice(i, 1);
-        }
+        drawStreak(s);
+        s.x    += s.vx;
+        s.y    += s.vy;
+        s.life -= s.decay;
+        if (s.life <= 0) streaks.splice(i, 1);
       }
-
-      renderer.render(scene, cam);
     }
-    loop();
 
-    // ── Resize ───────────────────────────────────────────────────
+    rafId = requestAnimationFrame(loop);
+
+    // ── Resize ────────────────────────────────────────────────────
     function onResize() {
-      cam.aspect = innerWidth / innerHeight;
-      cam.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width  = W;
+      canvas.height = H;
+      nebula       = buildNebula(W, H);
+      brightStars  = buildBrightStars(W, H);
     }
     window.addEventListener('resize', onResize);
 
-    // ── Cleanup ──────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', onResize);
-      renderer.dispose();
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      id="space-canvas"
       style={{
         position:      'fixed',
         inset:          0,
