@@ -12,10 +12,16 @@ export default function ZombieLandGame({ active }) {
   const W = 560, H = 300, GH = 68, GW = 12, PR = 22, BR = 9, MAX = 5;
   const FIXED_SPEED = 6.5;
 
+  // Safe X constants: AI stays off the right wall to prevent wall-trapping
+  const AI_HOME_X = W - PR - GW - 38;  // comfortable guard position
+  const AI_MIN_X  = W / 2 + PR;        // never cross centre
+  const AI_MAX_X  = W - PR - GW - 26;  // never press into the right wall
+
   const initState = () => ({
     ball: { x: W / 2, y: H / 2, vx: (Math.random() > .5 ? 1 : -1) * FIXED_SPEED, vy: (Math.random() - .5) * 3.2 },
-    p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: W - PR - GW - 4, y: H / 2 },
+    p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 },
     score: { p1: 0, p2: 0 }, mouse: { x: W / 4, y: H / 2 }, on: true,
+    aiNudge: 0, // random Y offset refreshed on each AI touch to break repeating loops
   });
 
   useEffect(() => {
@@ -41,37 +47,63 @@ export default function ZombieLandGame({ active }) {
 
     const loop = () => {
       const s = state.current; if (!s || !s.on) return;
-      const ai = 4.2, dy2 = s.ball.y - s.p2.y;
-      s.p2.y += Math.sign(dy2) * Math.min(Math.abs(dy2), ai);
+
+      // ── AI logic ───────────────────────────────────────────────
+      // Y: predict where ball arrives at AI's X (simulate wall bounces)
+      let targetY = H / 2;
+      if (s.ball.vx > 0) {
+        const timeToAI = (s.p2.x - s.ball.x) / s.ball.vx;
+        if (timeToAI > 0) {
+          let predY = s.ball.y + s.ball.vy * timeToAI;
+          // Fold prediction back through top/bottom walls
+          predY = ((predY % (2 * H)) + 2 * H) % (2 * H);
+          if (predY > H) predY = 2 * H - predY;
+          targetY = predY + s.aiNudge;
+        }
+      }
+      // Ball moving away → guard centre
+      targetY = Math.max(PR, Math.min(H - PR, targetY));
+
+      const AI_SPD = 4.5;
+      const dyAI = targetY - s.p2.y;
+      s.p2.y += Math.sign(dyAI) * Math.min(Math.abs(dyAI), AI_SPD);
       s.p2.y = Math.max(PR, Math.min(H - PR, s.p2.y));
-      // AI horizontal movement: stay near right side but move away from walls/corners
-      const aiTargetX = s.ball.vx > 0 ? W - PR - GW - 4 : W - PR - GW - 40;
-      const cornerEscape = (s.p2.y <= PR + 10 || s.p2.y >= H - PR - 10) ? (W - PR - GW - 50) : W - PR - GW - 4;
-      const finalTargetX = Math.max(W / 2 + PR, Math.min(W - PR - GW - 4, Math.min(aiTargetX, cornerEscape)));
-      s.p2.x += (finalTargetX - s.p2.x) * 0.08;
-      s.p2.x = Math.max(W / 2 + PR, Math.min(W - PR - GW - 4, s.p2.x));
+
+      // X: hold home position — never drift into the wall
+      const ballApproaching = s.ball.vx > 0 && s.ball.x > W / 2;
+      const desiredX = ballApproaching ? AI_HOME_X : AI_HOME_X - 10;
+      s.p2.x += (desiredX - s.p2.x) * 0.1;
+      s.p2.x = Math.max(AI_MIN_X, Math.min(AI_MAX_X, s.p2.x));
+      // ── end AI logic ───────────────────────────────────────────
+
       s.p1.x += (Math.max(PR + GW + 4, Math.min(W / 2 - PR, s.mouse.x)) - s.p1.x) * .22;
       s.p1.y += (Math.max(PR, Math.min(H - PR, s.mouse.y)) - s.p1.y) * .22;
+
       s.ball.x += s.ball.vx; s.ball.y += s.ball.vy;
       if (s.ball.y - BR <= 0) { s.ball.y = BR; s.ball.vy = Math.abs(s.ball.vy); }
       if (s.ball.y + BR >= H) { s.ball.y = H - BR; s.ball.vy = -Math.abs(s.ball.vy); }
-      [[s.p1.x, s.p1.y], [s.p2.x, s.p2.y]].forEach(([px, py]) => {
+
+      [[s.p1.x, s.p1.y], [s.p2.x, s.p2.y]].forEach(([px, py], i) => {
         const dx = s.ball.x - px, dy = s.ball.y - py, d = Math.sqrt(dx * dx + dy * dy);
         if (d < PR + BR) {
           const n = PR + BR, nx = dx / d, ny = dy / d;
-          s.ball.vx = nx * FIXED_SPEED; s.ball.vy = ny * FIXED_SPEED + (Math.random() - 0.5) * 1.0;
+          s.ball.vx = nx * FIXED_SPEED;
+          s.ball.vy = ny * FIXED_SPEED + (Math.random() - 0.5) * 1.0;
           s.ball.x = px + nx * (n + 1); s.ball.y = py + ny * (n + 1);
+          // Refresh nudge on every AI touch so bounce angles always vary
+          if (i === 1) s.aiNudge = (Math.random() - 0.5) * 18;
         }
       });
+
       const inGoal = s.ball.y >= goaly && s.ball.y <= goalY2;
       if (s.ball.x - BR <= GW && inGoal) {
         s.score.p2++; setScore({ ...s.score });
-        Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: W - PR - GW - 4, y: H / 2 } });
+        Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
         if (s.score.p2 >= MAX) { s.on = false; setWinner('AI'); c.removeEventListener('mousemove', onMove); return; }
       }
       if (s.ball.x + BR >= W - GW && inGoal) {
         s.score.p1++; setScore({ ...s.score });
-        Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: -FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: W - PR - GW - 4, y: H / 2 } });
+        Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: -FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
         if (s.score.p1 >= MAX) { s.on = false; setWinner('YOU'); c.removeEventListener('mousemove', onMove); return; }
       }
       if (s.ball.x - BR <= GW && !inGoal) { s.ball.x = GW + BR; s.ball.vx = Math.abs(s.ball.vx); }
