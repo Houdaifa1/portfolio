@@ -1,0 +1,37 @@
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080b14;--bg2:#0c1020;--surface:rgba(12,18,32,0.75);--surface2:rgba(20,32,56,0.8);
+  --border:rgba(40,70,110,0.5);--border2:rgba(50,85,130,0.6);
+  --accent:#00d4ff;--accent2:#0066ff;--accent3:#00ff88;
+  --red:#ff3b5c;--yellow:#ffc142;--purple:#c084fc;
+  --text:#f0f6ff;--text2:#8bacc8;--text3:#4a6480;
+  --mono:'JetBrains Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
+}
+html{scroll-behavior:auto}
+body{background:#060910;color:var(--text);font-family:var(--sans);overflow-x:hidden;cursor:none}
+#root{min-height:100vh;position:relative;z-index:1;background:transparent}
+section{background:transparent;position:relative;z-index:2}
+p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+.card{background:rgba(10,16,28,0.88);backdrop-filter:blur(12px)}
+#space-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+.cursor{position:fixed;width:10px;height:10px;background:#00d4ff;border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen;transition:width .12s,height .12s}
+.cursor-ring{position:fixed;width:34px;height:34px;border:1.5px solid rgba(0,212,255,.45);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:width .22s,height .22s,border-color .22s}
+.cursor.big{width:20px;height:20px}.cursor-ring.big{width:56px;height:56px;border-color:rgba(0,212,255,.75)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:rgba(4,7,14,0.8)}::-webkit-scrollbar-thumb{background:#2a3d54;border-radius:4px}
+::selection{background:rgba(0,212,255,.22)}input,textarea{cursor:text!important}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.skills-grid{grid-template-columns:1fr 1fr!important}.skills-grid>*{grid-column:span 1!important}}
+@media(max-width:600px){.skills-grid{grid-template-columns:1fr!important}}
+@keyframes wipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0% 0 0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.reveal{opacity:0;transform:translateY(32px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-left{opacity:0;transform:translateX(-32px);transition:opacity .7s ease,transform .7s ease}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(32px);transition:opacity .7s ease,transform .7s ease}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
