@@ -10,7 +10,7 @@ export default function ZombieLandGame({ active }) {
 
   const PLAYER_COL = '#00ff88', AI_COL = '#ff3b5c', BALL_COL = '#ccff44';
   const W = 560, H = 300, GH = 68, GW = 12, PR = 22, BR = 9, MAX = 5;
-  const FIXED_SPEED = 5.0;
+  const FIXED_SPEED = 6.5;
 
   const initState = () => ({
     ball: { x: W / 2, y: H / 2, vx: (Math.random() > .5 ? 1 : -1) * FIXED_SPEED, vy: (Math.random() - .5) * 3.2 },
@@ -41,9 +41,15 @@ export default function ZombieLandGame({ active }) {
 
     const loop = () => {
       const s = state.current; if (!s || !s.on) return;
-      const ai = 3.6, dy2 = s.ball.y - s.p2.y;
+      const ai = 4.2, dy2 = s.ball.y - s.p2.y;
       s.p2.y += Math.sign(dy2) * Math.min(Math.abs(dy2), ai);
       s.p2.y = Math.max(PR, Math.min(H - PR, s.p2.y));
+      // AI horizontal movement: stay near right side but move away from walls/corners
+      const aiTargetX = s.ball.vx > 0 ? W - PR - GW - 4 : W - PR - GW - 40;
+      const cornerEscape = (s.p2.y <= PR + 10 || s.p2.y >= H - PR - 10) ? (W - PR - GW - 50) : W - PR - GW - 4;
+      const finalTargetX = Math.max(W / 2 + PR, Math.min(W - PR - GW - 4, Math.min(aiTargetX, cornerEscape)));
+      s.p2.x += (finalTargetX - s.p2.x) * 0.08;
+      s.p2.x = Math.max(W / 2 + PR, Math.min(W - PR - GW - 4, s.p2.x));
       s.p1.x += (Math.max(PR + GW + 4, Math.min(W / 2 - PR, s.mouse.x)) - s.p1.x) * .22;
       s.p1.y += (Math.max(PR, Math.min(H - PR, s.mouse.y)) - s.p1.y) * .22;
       s.ball.x += s.ball.vx; s.ball.y += s.ball.vy;
