@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
+// --- map data ---
 const MAP = [
   [1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,1],
@@ -15,39 +16,43 @@ const MAP = [
 const ROWS = MAP.length;
 const COLS = MAP[0].length;
 
-// 2D rotation (y axis points down)
+// --- vector rotation (y down) ---
 function rotVec(x, y, a) {
   const c = Math.cos(a), s = Math.sin(a);
   return [x * c - y * s, x * s + y * c];
 }
 
+// --- collision check ---
 function isOpen(x, y) {
-  const mx = x | 0, my = y | 0;  // fast floor
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
   return my >= 0 && my < ROWS && mx >= 0 && mx < COLS && MAP[my][mx] === 0;
 }
 
+// --- raycasting draw function (optimised) ---
 function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
-  // sky & floor
+  // sky gradient
   const sky = ctx.createLinearGradient(0, 0, 0, H / 2);
   sky.addColorStop(0, '#020408');
   sky.addColorStop(1, '#060d1a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H / 2);
 
+  // floor gradient
   const floor = ctx.createLinearGradient(0, H / 2, 0, H);
   floor.addColorStop(0, '#050810');
   floor.addColorStop(1, '#020305');
   ctx.fillStyle = floor;
   ctx.fillRect(0, H / 2, W, H / 2);
 
-  // raycasting loop
+  // raycast loop
   for (let col = 0; col < W; col++) {
     const camX = (2 * col) / W - 1;
     const rdx = dx + cx * camX;
     const rdy = dy + cy * camX;
 
-    let mx = px | 0;
-    let my = py | 0;
+    let mx = Math.floor(px);
+    let my = Math.floor(py);
 
     const ddx = rdx === 0 ? 1e30 : Math.abs(1 / rdx);
     const ddy = rdy === 0 ? 1e30 : Math.abs(1 / rdy);
@@ -59,7 +64,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
     let sideDistY = rdy < 0 ? (py - my) * ddy : (my + 1 - py) * ddy;
 
     let side = 0;
-    while (true) {
+    for (let i = 0; i < 80; i++) { // safety
       if (sideDistX < sideDistY) {
         sideDistX += ddx;
         mx += stepX;
@@ -72,28 +77,26 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
       if (MAP[my]?.[mx] === 1) break;
     }
 
-    const perpWallDist = side === 0
+    const perpDist = side === 0
       ? (mx - px + (1 - stepX) / 2) / rdx
       : (my - py + (1 - stepY) / 2) / rdy;
 
-    const lineHeight = Math.min(H, Math.floor(H / Math.max(perpWallDist, 0.01)));
+    const lineHeight = Math.min(H, Math.floor(H / Math.max(perpDist, 0.01)));
     const drawStart = (H - lineHeight) / 2;
-    const brightness = Math.max(0, 1 - perpWallDist / 8) * (side === 1 ? 0.45 : 1.0);
+    const brightness = Math.max(0, 1 - perpDist / 8) * (side === 1 ? 0.45 : 1.0);
 
-    // wall color (cyan‑blue palette)
-    const r = 0;
-    const g = Math.floor(80 + 132 * brightness);
-    const b = Math.floor(160 + 95 * brightness);
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    // wall color (cyan-blue)
+    const gVal = Math.floor(80 + 132 * brightness);
+    const bVal = Math.floor(160 + 95 * brightness);
+    ctx.fillStyle = `rgb(0,${gVal},${bVal})`;
     ctx.fillRect(col, drawStart, 1, lineHeight);
-
     if (lineHeight > 4) {
       ctx.fillStyle = `rgba(0,212,255,${0.1 * brightness})`;
       ctx.fillRect(col, drawStart, 1, 2);
     }
   }
 
-  // minimap (fast, no extra allocations)
+  // minimap
   const MS = 10;
   const mmX = W - COLS * MS - 8;
   const mmY = 8;
@@ -116,7 +119,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
 
   ctx.fillStyle = '#00d4ff';
   ctx.beginPath();
-  ctx.arc(ppx, ppy, 2.5, 0, Math.PI * 2);
+  ctx.arc(ppx, ppy, 2.5, 0, 2 * Math.PI);
   ctx.fill();
 
   const fl = MS * 2.8;
@@ -137,6 +140,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   ctx.stroke();
 }
 
+// --- main component ---
 export default function Cub3DGame({ active }) {
   const canvasRef = useRef(null);
   const keysRef = useRef(new Set());
@@ -148,10 +152,10 @@ export default function Cub3DGame({ active }) {
   const rafRef = useRef(null);
   const [focused, setFocused] = useState(false);
 
-  // --- Key handling (window‑level, only when focused) ---
-  const handleWindowKeyDown = useCallback((e) => {
+  // --- key handling directly on canvas ---
+  const handleKeyDown = useCallback((e) => {
     const key = e.key;
-    // block all arrow keys + space + WASD
+    // block all arrow keys, space, wasd
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'].includes(key)) {
       e.preventDefault();
       e.stopPropagation();
@@ -159,27 +163,29 @@ export default function Cub3DGame({ active }) {
     }
   }, []);
 
-  const handleWindowKeyUp = useCallback((e) => {
+  const handleKeyUp = useCallback((e) => {
     keysRef.current.delete(e.key);
   }, []);
 
-  // add/remove window listeners when focus changes
-  useEffect(() => {
-    if (focused && active) {
-      window.addEventListener('keydown', handleWindowKeyDown, { passive: false });
-      window.addEventListener('keyup', handleWindowKeyUp);
-    } else {
-      window.removeEventListener('keydown', handleWindowKeyDown);
-      window.removeEventListener('keyup', handleWindowKeyUp);
-      keysRef.current.clear(); // no stuck keys
-    }
-    return () => {
-      window.removeEventListener('keydown', handleWindowKeyDown);
-      window.removeEventListener('keyup', handleWindowKeyUp);
-    };
-  }, [focused, active, handleWindowKeyDown, handleWindowKeyUp]);
+  const handleBlur = useCallback(() => {
+    setFocused(false);
+    keysRef.current.clear(); // prevent stuck keys
+  }, []);
 
-  // --- Game loop ---
+  const handleFocus = useCallback(() => {
+    setFocused(true);
+  }, []);
+
+  // --- click handler to force focus (critical!) ---
+  const handleCanvasClick = useCallback(() => {
+    if (canvasRef.current) {
+      canvasRef.current.focus();
+      // extra safety: ensure focus after any pending events
+      setTimeout(() => canvasRef.current?.focus(), 10);
+    }
+  }, []);
+
+  // --- game loop ---
   useEffect(() => {
     if (!active || !canvasRef.current) return;
 
@@ -187,31 +193,28 @@ export default function Cub3DGame({ active }) {
     const ctx = canvas.getContext('2d');
     const W = canvas.width;
     const H = canvas.height;
-    const ROT_SPEED = 0.05;
-    const MOVE_SPEED = 0.07;
+    const ROT = 0.05;
+    const SPD = 0.07;
 
     const loop = () => {
       const s = stateRef.current;
       const keys = keysRef.current;
 
-      // rotation
       if (keys.has('ArrowRight') || keys.has('d')) {
-        [s.dx, s.dy] = rotVec(s.dx, s.dy, ROT_SPEED);
-        [s.cx, s.cy] = rotVec(s.cx, s.cy, ROT_SPEED);
+        [s.dx, s.dy] = rotVec(s.dx, s.dy, ROT);
+        [s.cx, s.cy] = rotVec(s.cx, s.cy, ROT);
       }
       if (keys.has('ArrowLeft') || keys.has('a')) {
-        [s.dx, s.dy] = rotVec(s.dx, s.dy, -ROT_SPEED);
-        [s.cx, s.cy] = rotVec(s.cx, s.cy, -ROT_SPEED);
+        [s.dx, s.dy] = rotVec(s.dx, s.dy, -ROT);
+        [s.cx, s.cy] = rotVec(s.cx, s.cy, -ROT);
       }
-
-      // forward / backward
       if (keys.has('ArrowUp') || keys.has('w')) {
-        if (isOpen(s.px + s.dx * MOVE_SPEED, s.py)) s.px += s.dx * MOVE_SPEED;
-        if (isOpen(s.px, s.py + s.dy * MOVE_SPEED)) s.py += s.dy * MOVE_SPEED;
+        if (isOpen(s.px + s.dx * SPD, s.py)) s.px += s.dx * SPD;
+        if (isOpen(s.px, s.py + s.dy * SPD)) s.py += s.dy * SPD;
       }
       if (keys.has('ArrowDown') || keys.has('s')) {
-        if (isOpen(s.px - s.dx * MOVE_SPEED, s.py)) s.px -= s.dx * MOVE_SPEED;
-        if (isOpen(s.px, s.py - s.dy * MOVE_SPEED)) s.py -= s.dy * MOVE_SPEED;
+        if (isOpen(s.px - s.dx * SPD, s.py)) s.px -= s.dx * SPD;
+        if (isOpen(s.px, s.py - s.dy * SPD)) s.py -= s.dy * SPD;
       }
 
       drawScene(ctx, W, H, s.px, s.py, s.dx, s.dy, s.cx, s.cy);
@@ -225,22 +228,13 @@ export default function Cub3DGame({ active }) {
     };
   }, [active]);
 
-  // --- Canvas focus handling ---
-  const handleCanvasFocus = useCallback(() => setFocused(true), []);
-  const handleCanvasBlur = useCallback(() => {
-    setFocused(false);
-    keysRef.current.clear();
-  }, []);
-  const handleCanvasClick = useCallback(() => {
-    canvasRef.current?.focus();
-  }, []);
-
-  // when active becomes true, give focus automatically (optional)
+  // --- reset when inactive ---
   useEffect(() => {
-    if (active) {
-      // tiny delay to avoid interfering with parent re‑renders
-      const t = setTimeout(() => canvasRef.current?.focus(), 10);
-      return () => clearTimeout(t);
+    if (!active) {
+      keysRef.current.clear();
+      setFocused(false);
+      // reset player position (optional)
+      stateRef.current = { px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.6 };
     }
   }, [active]);
 
@@ -253,8 +247,10 @@ export default function Cub3DGame({ active }) {
           height={360}
           tabIndex={0}
           onClick={handleCanvasClick}
-          onFocus={handleCanvasFocus}
-          onBlur={handleCanvasBlur}
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           style={{
             display: 'block',
             width: '100%',
