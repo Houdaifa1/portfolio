@@ -64,7 +64,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
     let sideDistY = rdy < 0 ? (py - my) * ddy : (my + 1 - py) * ddy;
 
     let side = 0;
-    for (let i = 0; i < 80; i++) { // safety
+    for (let i = 0; i < 80; i++) {
       if (sideDistX < sideDistY) {
         sideDistX += ddx;
         mx += stepX;
@@ -140,7 +140,6 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
   ctx.stroke();
 }
 
-// --- main component ---
 export default function Cub3DGame({ active }) {
   const canvasRef = useRef(null);
   const keysRef = useRef(new Set());
@@ -155,7 +154,6 @@ export default function Cub3DGame({ active }) {
   // --- key handling directly on canvas ---
   const handleKeyDown = useCallback((e) => {
     const key = e.key;
-    // block all arrow keys, space, wasd
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'].includes(key)) {
       e.preventDefault();
       e.stopPropagation();
@@ -169,25 +167,26 @@ export default function Cub3DGame({ active }) {
 
   const handleBlur = useCallback(() => {
     setFocused(false);
-    keysRef.current.clear(); // prevent stuck keys
+    keysRef.current.clear();
   }, []);
 
   const handleFocus = useCallback(() => {
     setFocused(true);
   }, []);
 
-  // --- click handler to force focus (critical!) ---
   const handleCanvasClick = useCallback(() => {
     if (canvasRef.current) {
       canvasRef.current.focus();
-      // extra safety: ensure focus after any pending events
       setTimeout(() => canvasRef.current?.focus(), 10);
     }
   }, []);
 
-  // --- game loop ---
+  // --- Determine if the game loop should run ---
+  const loopActive = active || focused;
+
+  // --- Game loop (starts when loopActive becomes true) ---
   useEffect(() => {
-    if (!active || !canvasRef.current) return;
+    if (!loopActive || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -226,17 +225,14 @@ export default function Cub3DGame({ active }) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [active]);
+  }, [loopActive]);
 
-  // --- reset when inactive ---
+  // --- Reset player position when component becomes completely inactive ---
   useEffect(() => {
-    if (!active) {
-      keysRef.current.clear();
-      setFocused(false);
-      // reset player position (optional)
+    if (!active && !focused) {
       stateRef.current = { px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.6 };
     }
-  }, [active]);
+  }, [active, focused]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
