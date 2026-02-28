@@ -26,7 +26,7 @@
 
 My personal portfolio — built from scratch, no templates, no UI libraries. Just React, Vite, and raw CSS. Every component hand-written. Interactive demos for each project so you can actually play with the work, not just read about it.
 
-**Live at → [houdaifa.dev](https://houaifa.dev)**
+**Live at → [houdaifa.dev](https://houdaifa.dev)**
 
 ---
 
