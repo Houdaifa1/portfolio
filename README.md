@@ -13,7 +13,7 @@
 
 **Backend & DevOps Engineer · 1337 School · UM6P · Morocco 🇲🇦**
 
-[![Live](https://img.shields.io/badge/LIVE-hdrahm.dev-00d4ff?style=for-the-badge&logo=cloudflare&logoColor=white)](https://hdrahm.dev)
+[![Live](https://img.shields.io/badge/LIVE-houdaifa.dev-00d4ff?style=for-the-badge&logo=cloudflare&logoColor=white)](https://houdaifa.dev)
 [![Cloudflare](https://img.shields.io/badge/Deployed_on-Cloudflare_Pages-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://pages.cloudflare.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
@@ -26,7 +26,7 @@
 
 My personal portfolio — built from scratch, no templates, no UI libraries. Just React, Vite, and raw CSS. Every component hand-written. Interactive demos for each project so you can actually play with the work, not just read about it.
 
-**Live at → [hdrahm.dev](https://hdrahm.dev)**
+**Live at → [houdaifa.dev](https://houaifa.dev)**
 
 ---
 
@@ -129,6 +129,6 @@ git push
 
 <div align="center">
 
-**Built by [Houdaifa Drahm](https://hdrahm.dev) · 1337 School · UM6P · Morocco**
+**Built by [Houdaifa Drahm](https://houdaifa.dev) · 1337 School · UM6P · Morocco**
 
 </div>
