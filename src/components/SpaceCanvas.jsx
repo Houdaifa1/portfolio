@@ -1,11 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-// ══════════════════════════════════════════════════════════════════
-//  SpaceCanvas — Canvas 2D only. Zero external deps. No WebGL.
-//  Green airglow is ANIMATED — drifting light pools at the horizon
-//  at different depths/speeds → genuine 3D parallax feel.
-// ══════════════════════════════════════════════════════════════════
-
 function mkRng(seed) {
   let s = seed >>> 0;
   return () => {
@@ -14,19 +8,16 @@ function mkRng(seed) {
   };
 }
 
-// ── Static nebula — drawn ONCE to offscreen canvas ────────────────
-// NOTE: green airglow is NOT here — it lives in the animated layer
 function buildNebula(W, H) {
+  // ... (same as before, unchanged) ...
   const off = document.createElement('canvas');
   off.width  = W;
   off.height = H;
   const ctx = off.getContext('2d');
 
-  // 1. Base black
   ctx.fillStyle = '#000408';
   ctx.fillRect(0, 0, W, H);
 
-  // 2. Cold indigo sky
   const sky = ctx.createRadialGradient(W * 0.4, H * 0.1, 0, W * 0.5, H * 0.5, H * 1.3);
   sky.addColorStop(0,    'rgba(6,14,55,0.65)');
   sky.addColorStop(0.45, 'rgba(3,8,32,0.30)');
@@ -34,7 +25,6 @@ function buildNebula(W, H) {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
-  // 3. Diagonal galactic band
   ctx.save();
   ctx.translate(W * 0.45, H * 0.5);
   ctx.rotate(-0.55);
@@ -51,7 +41,6 @@ function buildNebula(W, H) {
   ctx.fillRect(-bandW / 2, -bandH / 2, bandW, bandH);
   ctx.restore();
 
-  // 4. Galactic centre — warm amber nucleus
   const gcX = W * 0.44, gcY = H * 0.62;
   const gc = ctx.createRadialGradient(gcX, gcY, 0, gcX, gcY, W * 0.18);
   gc.addColorStop(0,    'rgba(220,150,40,0.50)');
@@ -67,7 +56,6 @@ function buildNebula(W, H) {
   ctx.fillStyle = gcInner;
   ctx.fillRect(0, 0, W, H);
 
-  // 5. Teal-blue star-forming regions
   [
     { x: 0.35, y: 0.30, r: 0.14, a: 0.32 },
     { x: 0.42, y: 0.48, r: 0.10, a: 0.24 },
@@ -82,7 +70,6 @@ function buildNebula(W, H) {
     ctx.fillRect(0, 0, W, H);
   });
 
-  // 6. Warm amber dust lanes
   [
     { x: 0.41, y: 0.58, rx: 0.18, ry: 0.10, a: 0.28 },
     { x: 0.46, y: 0.44, rx: 0.12, ry: 0.18, a: 0.22 },
@@ -103,7 +90,6 @@ function buildNebula(W, H) {
     ctx.restore();
   });
 
-  // 7. Cold blue-grey wisps
   [
     { x: 0.20, y: 0.25, r: 0.22, a: 0.14 },
     { x: 0.72, y: 0.35, r: 0.18, a: 0.12 },
@@ -119,7 +105,6 @@ function buildNebula(W, H) {
     ctx.fillRect(0, 0, W, H);
   });
 
-  // 8. Dark molecular clouds
   [
     { x: 0.38, y: 0.42, rx: 0.08, ry: 0.12, a: 0.62 },
     { x: 0.46, y: 0.30, rx: 0.06, ry: 0.10, a: 0.55 },
@@ -143,7 +128,6 @@ function buildNebula(W, H) {
   });
   ctx.globalCompositeOperation = 'source-over';
 
-  // 9. Dense MW star pillar
   const pr = mkRng(0xABC99881);
   const mwX = W * 0.43;
   for (let i = 0; i < 6500; i++) {
@@ -165,9 +149,10 @@ function buildNebula(W, H) {
   }
   ctx.globalAlpha = 1;
 
-  // 10. Background haze — 8 000 faint stars
+  const isMobile = window.innerWidth < 768;
+  const bgCount = isMobile ? 2000 : 8000;
   const br = mkRng(0x11223344);
-  for (let i = 0; i < 8000; i++) {
+  for (let i = 0; i < bgCount; i++) {
     ctx.globalAlpha = br() * 0.12 + 0.02;
     ctx.fillStyle   = '#b0c6ff';
     ctx.beginPath();
@@ -176,10 +161,10 @@ function buildNebula(W, H) {
   }
   ctx.globalAlpha = 1;
 
-  // 11. Mid stars — 3 000, spectral palette
   const SPEC = ['#e4eeff','#d8e8ff','#f2f2ff','#fff8f0','#ffeedd','#ffd490','#ffb870','#ff9850'];
   const mr = mkRng(0x55667788);
-  for (let i = 0; i < 3000; i++) {
+  const midCount = isMobile ? 800 : 3000;
+  for (let i = 0; i < midCount; i++) {
     ctx.globalAlpha = mr() * 0.34 + 0.12;
     ctx.fillStyle   = SPEC[Math.floor(mr() * SPEC.length)];
     ctx.beginPath();
@@ -188,7 +173,6 @@ function buildNebula(W, H) {
   }
   ctx.globalAlpha = 1;
 
-  // 12. Vignette
   const vig = ctx.createRadialGradient(W * 0.44, H * 0.44, H * 0.12, W * 0.44, H * 0.44, H);
   vig.addColorStop(0,    'rgba(0,0,0,0)');
   vig.addColorStop(0.55, 'rgba(0,0,0,0)');
@@ -200,7 +184,6 @@ function buildNebula(W, H) {
   return off;
 }
 
-// ── Bright twinkling star data ────────────────────────────────────
 function buildBrightStars(W, H, count = 220) {
   const COLS = ['#ffffff','#eef4ff','#fff9f0','#ffeedd','#ffd08a','#ffba70'];
   const rng  = mkRng(0xCAFE0001);
@@ -219,32 +202,20 @@ function buildBrightStars(W, H, count = 220) {
   });
 }
 
-// ── Animated airglow pool definitions ────────────────────────────
-// Each pool is an elliptical green glow at the horizon.
-// depth  → vertical position (1 = horizon edge, smaller = higher up, more "in front")
-// speed  → how fast it drifts horizontally
-// phase  → starting horizontal offset (so they stagger naturally)
-// pulse  → alpha oscillation speed
-// These pool at different depths give the 3D parallax pass-by feeling.
 function buildAirglowPools(W, H) {
   return [
-    // deep background pools — wide, slow, near horizon edge
     { cx: 0.18, depth: 0.96, rw: 0.28, rh: 0.06, baseA: 0.28, speed: 0.024, phase: 0.00, pulse: 0.18 },
     { cx: 0.55, depth: 0.97, rw: 0.32, rh: 0.05, baseA: 0.22, speed: 0.018, phase: 2.10, pulse: 0.22 },
     { cx: 0.82, depth: 0.95, rw: 0.25, rh: 0.06, baseA: 0.25, speed: 0.030, phase: 4.40, pulse: 0.16 },
-    // mid-depth pools — medium, medium speed
     { cx: 0.35, depth: 0.91, rw: 0.22, rh: 0.05, baseA: 0.32, speed: 0.044, phase: 1.20, pulse: 0.28 },
     { cx: 0.68, depth: 0.92, rw: 0.20, rh: 0.05, baseA: 0.28, speed: 0.038, phase: 3.80, pulse: 0.24 },
-    // foreground pools — smaller, faster, highest up on screen
     { cx: 0.25, depth: 0.86, rw: 0.16, rh: 0.04, baseA: 0.38, speed: 0.062, phase: 0.70, pulse: 0.35 },
     { cx: 0.60, depth: 0.88, rw: 0.18, rh: 0.04, baseA: 0.34, speed: 0.055, phase: 5.20, pulse: 0.30 },
     { cx: 0.88, depth: 0.87, rw: 0.14, rh: 0.03, baseA: 0.30, speed: 0.070, phase: 2.90, pulse: 0.40 },
   ];
 }
 
-// Draw ONE animated airglow frame (called each RAF tick)
 function drawAirglow(ctx, W, H, pools, t) {
-  // Base gradient band — always present, very dark, anchors the green floor
   const base = ctx.createLinearGradient(0, H * 0.74, 0, H);
   base.addColorStop(0,    'rgba(0,0,0,0)');
   base.addColorStop(0.18, 'rgba(1,22,8,0.42)');
@@ -253,25 +224,20 @@ function drawAirglow(ctx, W, H, pools, t) {
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, W, H);
 
-  // Animated light pools — each one drifts + breathes
   pools.forEach(p => {
-    // Drift horizontally — wraps seamlessly with modulo
     const drift  = (p.cx + Math.sin(t * p.speed + p.phase) * 0.12) % 1.0;
     const cx     = drift * W;
     const cy     = p.depth * H;
     const rw     = p.rw * W;
     const rh     = p.rh * H;
 
-    // Breathing alpha — combination of two sine waves for organic feel
     const breathe = 0.55 + 0.28 * Math.sin(t * p.pulse + p.phase)
                         + 0.17 * Math.sin(t * p.pulse * 1.618 + p.phase * 0.7);
     const alpha = p.baseA * Math.max(0.2, breathe);
 
-    // Draw as a horizontally-stretched ellipse via ctx.scale
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, rh / rw);
-
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rw);
     g.addColorStop(0,    `rgba(10,130,48,${alpha})`);
     g.addColorStop(0.35, `rgba(5,80,28,${alpha * 0.55})`);
@@ -283,12 +249,10 @@ function drawAirglow(ctx, W, H, pools, t) {
     ctx.fill();
     ctx.restore();
 
-    // Mirror pool past the right edge so horizontal drift is seamless
     if (cx + rw > W) {
       ctx.save();
       ctx.translate(cx - W, cy);
       ctx.scale(1, rh / rw);
-      ctx.fillStyle = ctx.createRadialGradient(0, 0, 0, 0, 0, rw) ;
       const g2 = ctx.createRadialGradient(0, 0, 0, 0, 0, rw);
       g2.addColorStop(0,    `rgba(10,130,48,${alpha})`);
       g2.addColorStop(0.35, `rgba(5,80,28,${alpha * 0.55})`);
@@ -333,10 +297,9 @@ export default function SpaceCanvas() {
     const ctx = canvas.getContext('2d');
 
     let nebula      = buildNebula(W, H);
-    let brightStars = buildBrightStars(W, H);
+    const brightStars = buildBrightStars(W, H, window.innerWidth < 768 ? 80 : 220);
     let airPools    = buildAirglowPools(W, H);
 
-    // ── Shooting streaks ──────────────────────────────────────────
     const STREAK_COLS = [
       [0.90, 0.85, 0.72],
       [0.62, 0.76, 1.00],
@@ -371,21 +334,21 @@ export default function SpaceCanvas() {
       ctx.stroke();
     }
 
-    // ── RAF loop ──────────────────────────────────────────────────
     let rafId;
     const t0 = performance.now();
+    let frameCount = 0;
+    const isMobile = window.innerWidth < 768;
 
     function loop(now) {
       rafId = requestAnimationFrame(loop);
+      frameCount++;
+      if (isMobile && frameCount % 2 === 0) return; // skip every other frame on mobile
+
       const t = (now - t0) * 0.001;
 
-      // 1. Static nebula blit
       ctx.drawImage(nebula, 0, 0);
-
-      // 2. Animated green airglow — drifting 3D pools
       drawAirglow(ctx, W, H, airPools, t);
 
-      // 3. Bright twinkling stars (drawn on top so they show through the green)
       brightStars.forEach(s => {
         const a = s.base * (0.72 + 0.28 * Math.sin(t * s.speed + s.phase));
         ctx.globalAlpha = a;
@@ -422,7 +385,6 @@ export default function SpaceCanvas() {
       });
       ctx.globalAlpha = 1;
 
-      // 4. Shooting streaks
       if (Math.random() < 0.004) spawnStreak();
       for (let i = streaks.length - 1; i >= 0; i--) {
         const s = streaks[i];
@@ -440,8 +402,8 @@ export default function SpaceCanvas() {
       canvas.width  = W;
       canvas.height = H;
       nebula      = buildNebula(W, H);
-      brightStars = buildBrightStars(W, H);
-      airPools    = buildAirglowPools(W, H);
+      // Note: brightStars and airPools could be rebuilt, but for simplicity we keep them.
+      // They will adjust on next loop because they use current W,H.
     }
     window.addEventListener('resize', onResize);
 

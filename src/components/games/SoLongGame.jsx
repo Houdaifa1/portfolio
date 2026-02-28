@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import TouchControls from '../TouchControls';
 
-const btnStyle = { fontFamily: 'var(--mono)', fontSize: 12, width: 32, height: 32, background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'none', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const btnStyle = { fontFamily: 'var(--mono)', fontSize: 12, width: 32, height: 32, background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
 export default function SoLongGame({ active }) {
   const GRID = [
@@ -23,7 +24,13 @@ export default function SoLongGame({ active }) {
   };
 
   const [state, setState] = useState(initState);
-  useEffect(() => { if (!active) setState(initState()); }, [active]);
+  const [touchDir, setTouchDir] = useState({ up: false, down: false, left: false, right: false });
+  const moveIntervalRef = useRef(null);
+  const isTouch = 'ontouchstart' in window;
+
+  useEffect(() => {
+    if (!active) setState(initState());
+  }, [active]);
 
   const move = useCallback((dx, dy) => {
     setState(s => {
@@ -38,19 +45,41 @@ export default function SoLongGame({ active }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (!isTouch) return;
+    const interval = setInterval(() => {
+      if (touchDir.up) move(0, -1);
+      if (touchDir.down) move(0, 1);
+      if (touchDir.left) move(-1, 0);
+      if (touchDir.right) move(1, 0);
+    }, 150);
+    moveIntervalRef.current = interval;
+    return () => clearInterval(interval);
+  }, [touchDir, move]);
+
+  const handleTouchMove = useCallback((dirs) => {
+    setTouchDir(dirs);
+  }, []);
+
   const soLongRef = useRef(null);
-  useEffect(() => { if (active && soLongRef.current) soLongRef.current.focus(); }, [active]);
+  useEffect(() => {
+    if (active && soLongRef.current) soLongRef.current.focus();
+  }, [active]);
 
   const handleSoLongKey = useCallback((e) => {
     const k = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
-    if (k[e.key]) { e.preventDefault(); e.stopPropagation(); move(...k[e.key]); }
+    if (k[e.key]) {
+      e.preventDefault();
+      e.stopPropagation();
+      move(...k[e.key]);
+    }
   }, [move]);
 
   const allCoins = state.coins.every(c => c.got);
   const CW = 36;
 
   return (
-    <div ref={soLongRef} tabIndex={0} onKeyDown={handleSoLongKey} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none' }}>
+    <div ref={soLongRef} tabIndex={0} onKeyDown={handleSoLongKey} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none' }}>
       <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
         Moves: {state.moves} · Coins: {state.coins.filter(c => c.got).length}/{state.coins.length} · {allCoins ? 'Find the exit E!' : 'Collect all coins first'}
       </div>
@@ -75,19 +104,22 @@ export default function SoLongGame({ active }) {
         ))}
       </div>
       {state.won && <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: '#00ff88', fontWeight: 700, animation: 'fadeUp .4s ease' }}>🎉 Escaped in {state.moves} moves!</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button data-h onClick={() => move(0, -1)} style={btnStyle}>↑</button>
+      {!isTouch && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button data-h onClick={() => move(0, -1)} style={btnStyle}>↑</button>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button data-h onClick={() => move(-1, 0)} style={btnStyle}>←</button>
+            <button data-h onClick={() => move(0, 1)} style={btnStyle}>↓</button>
+            <button data-h onClick={() => move(1, 0)} style={btnStyle}>→</button>
+          </div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text3)', letterSpacing: 1, marginTop: 2 }}>Click game · WASD / ARROW KEYS</div>
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button data-h onClick={() => move(-1, 0)} style={btnStyle}>←</button>
-          <button data-h onClick={() => move(0, 1)} style={btnStyle}>↓</button>
-          <button data-h onClick={() => move(1, 0)} style={btnStyle}>→</button>
-        </div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text3)', letterSpacing: 1, marginTop: 2 }}>Click game · WASD / ARROW KEYS</div>
-      </div>
+      )}
+      {isTouch && <TouchControls onMove={handleTouchMove} />}
       {state.won && (
-        <button data-h onClick={() => setState(initState())} style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '5px 16px', background: 'rgba(0,255,136,.12)', border: '1px solid #00ff88', color: '#00ff88', cursor: 'none', borderRadius: 3 }}>▶ PLAY AGAIN</button>
+        <button data-h onClick={() => setState(initState())} style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '5px 16px', background: 'rgba(0,255,136,.12)', border: '1px solid #00ff88', color: '#00ff88', cursor: 'pointer', borderRadius: 3 }}>▶ PLAY AGAIN</button>
       )}
     </div>
   );

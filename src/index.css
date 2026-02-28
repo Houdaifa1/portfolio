@@ -35,3 +35,14 @@ p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-s
 .reveal-left.visible{opacity:1;transform:translateX(0)}
 .reveal-right{opacity:0;transform:translateX(32px);transition:opacity .7s ease,transform .7s ease}
 .reveal-right.visible{opacity:1;transform:translateX(0)}
+
+/* Touch device adjustments */
+@media (pointer: coarse) {
+  .cursor, .cursor-ring {
+    display: none !important;
+  }
+}
+
+canvas {
+  touch-action: none; /* prevent page scroll when interacting with canvas */
+}

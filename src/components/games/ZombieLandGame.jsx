@@ -12,16 +12,15 @@ export default function ZombieLandGame({ active }) {
   const W = 560, H = 300, GH = 68, GW = 12, PR = 22, BR = 9, MAX = 5;
   const FIXED_SPEED = 6.5;
 
-  // Safe X constants: AI stays off the right wall to prevent wall-trapping
-  const AI_HOME_X = W - PR - GW - 38;  // comfortable guard position
-  const AI_MIN_X  = W / 2 + PR;        // never cross centre
-  const AI_MAX_X  = W - PR - GW - 26;  // never press into the right wall
+  const AI_HOME_X = W - PR - GW - 38;
+  const AI_MIN_X  = W / 2 + PR;
+  const AI_MAX_X  = W - PR - GW - 26;
 
   const initState = () => ({
     ball: { x: W / 2, y: H / 2, vx: (Math.random() > .5 ? 1 : -1) * FIXED_SPEED, vy: (Math.random() - .5) * 3.2 },
     p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 },
     score: { p1: 0, p2: 0 }, mouse: { x: W / 4, y: H / 2 }, on: true,
-    aiNudge: 0, // random Y offset refreshed on each AI touch to break repeating loops
+    aiNudge: 0,
   });
 
   useEffect(() => {
@@ -36,32 +35,55 @@ export default function ZombieLandGame({ active }) {
     setWinner(null); setScore({ p1: 0, p2: 0 }); setStarted(true);
     state.current = initState();
     const c = canvas.current; if (!c) return;
+
+    const isTouch = 'ontouchstart' in window;
+
     const onMove = e => {
       if (!state.current) return;
       const r = c.getBoundingClientRect();
-      state.current.mouse = { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+      let clientX, clientY;
+      if (e.touches) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (!touch) return;
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      const x = (clientX - r.left) * (W / r.width);
+      const y = (clientY - r.top) * (H / r.height);
+      // On touch, only control if on left half
+      if (!isTouch || x < W / 2) {
+        state.current.mouse = { x, y };
+      }
     };
-    c.addEventListener('mousemove', onMove);
+
+    if (isTouch) {
+      c.addEventListener('touchmove', onMove, { passive: false });
+      c.addEventListener('touchstart', onMove, { passive: false });
+      c.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+    } else {
+      c.addEventListener('mousemove', onMove);
+    }
+
     const ctx = c.getContext('2d');
     const goaly = H / 2 - GH / 2, goalY2 = H / 2 + GH / 2;
 
     const loop = () => {
       const s = state.current; if (!s || !s.on) return;
 
-      // ── AI logic ───────────────────────────────────────────────
-      // Y: predict where ball arrives at AI's X (simulate wall bounces)
       let targetY = H / 2;
       if (s.ball.vx > 0) {
         const timeToAI = (s.p2.x - s.ball.x) / s.ball.vx;
         if (timeToAI > 0) {
           let predY = s.ball.y + s.ball.vy * timeToAI;
-          // Fold prediction back through top/bottom walls
           predY = ((predY % (2 * H)) + 2 * H) % (2 * H);
           if (predY > H) predY = 2 * H - predY;
           targetY = predY + s.aiNudge;
         }
       }
-      // Ball moving away → guard centre
       targetY = Math.max(PR, Math.min(H - PR, targetY));
 
       const AI_SPD = 4.5;
@@ -69,12 +91,10 @@ export default function ZombieLandGame({ active }) {
       s.p2.y += Math.sign(dyAI) * Math.min(Math.abs(dyAI), AI_SPD);
       s.p2.y = Math.max(PR, Math.min(H - PR, s.p2.y));
 
-      // X: hold home position — never drift into the wall
       const ballApproaching = s.ball.vx > 0 && s.ball.x > W / 2;
       const desiredX = ballApproaching ? AI_HOME_X : AI_HOME_X - 10;
       s.p2.x += (desiredX - s.p2.x) * 0.1;
       s.p2.x = Math.max(AI_MIN_X, Math.min(AI_MAX_X, s.p2.x));
-      // ── end AI logic ───────────────────────────────────────────
 
       s.p1.x += (Math.max(PR + GW + 4, Math.min(W / 2 - PR, s.mouse.x)) - s.p1.x) * .22;
       s.p1.y += (Math.max(PR, Math.min(H - PR, s.mouse.y)) - s.p1.y) * .22;
@@ -90,7 +110,6 @@ export default function ZombieLandGame({ active }) {
           s.ball.vx = nx * FIXED_SPEED;
           s.ball.vy = ny * FIXED_SPEED + (Math.random() - 0.5) * 1.0;
           s.ball.x = px + nx * (n + 1); s.ball.y = py + ny * (n + 1);
-          // Refresh nudge on every AI touch so bounce angles always vary
           if (i === 1) s.aiNudge = (Math.random() - 0.5) * 18;
         }
       });
@@ -99,12 +118,12 @@ export default function ZombieLandGame({ active }) {
       if (s.ball.x - BR <= GW && inGoal) {
         s.score.p2++; setScore({ ...s.score });
         Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
-        if (s.score.p2 >= MAX) { s.on = false; setWinner('AI'); c.removeEventListener('mousemove', onMove); return; }
+        if (s.score.p2 >= MAX) { s.on = false; setWinner('AI'); c.removeEventListener('mousemove', onMove); c.removeEventListener('touchmove', onMove); c.removeEventListener('touchstart', onMove); return; }
       }
       if (s.ball.x + BR >= W - GW && inGoal) {
         s.score.p1++; setScore({ ...s.score });
         Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: -FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
-        if (s.score.p1 >= MAX) { s.on = false; setWinner('YOU'); c.removeEventListener('mousemove', onMove); return; }
+        if (s.score.p1 >= MAX) { s.on = false; setWinner('YOU'); c.removeEventListener('mousemove', onMove); c.removeEventListener('touchmove', onMove); c.removeEventListener('touchstart', onMove); return; }
       }
       if (s.ball.x - BR <= GW && !inGoal) { s.ball.x = GW + BR; s.ball.vx = Math.abs(s.ball.vx); }
       if (s.ball.x + BR >= W - GW && !inGoal) { s.ball.x = W - GW - BR; s.ball.vx = -Math.abs(s.ball.vx); }
@@ -141,7 +160,12 @@ export default function ZombieLandGame({ active }) {
       raf.current = requestAnimationFrame(loop);
     };
     raf.current = requestAnimationFrame(loop);
-    return () => c.removeEventListener('mousemove', onMove);
+    return () => {
+      c.removeEventListener('mousemove', onMove);
+      c.removeEventListener('touchmove', onMove);
+      c.removeEventListener('touchstart', onMove);
+      c.removeEventListener('touchend', onMove);
+    };
   };
 
   const restart = () => {
@@ -165,16 +189,18 @@ export default function ZombieLandGame({ active }) {
         </div>
       </div>
       <div style={{ position: 'relative', width: '100%', maxWidth: 560, borderRadius: 8, overflow: 'hidden', border: '1px solid #0d2e14', boxShadow: '0 0 40px rgba(0,255,136,.1)' }}>
-        <canvas ref={canvas} width={W} height={H} style={{ display: 'block', width: '100%', height: 'auto' }} />
+        <canvas ref={canvas} width={W} height={H} style={{ display: 'block', width: '100%', height: 'auto', touchAction: 'none' }} />
         {!started && !winner && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2,10,4,.9)', backdropFilter: 'blur(6px)', gap: 14 }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'rgba(0,255,136,.5)', letterSpacing: 3 }}>MOVE MOUSE TO CONTROL · LEFT HALF</div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'rgba(0,255,136,.5)', letterSpacing: 3 }}>
+              {'ontouchstart' in window ? 'TOUCH LEFT HALF TO CONTROL' : 'MOVE MOUSE TO CONTROL · LEFT HALF'}
+            </div>
             <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: -1, color: '#00ff88' }}>🧟 ZOMBIE LAND</div>
             <div style={{ display: 'flex', gap: 20, fontFamily: 'var(--mono)', fontSize: 10 }}>
               <span style={{ color: PLAYER_COL }}>⬤ YOU</span><span style={{ color: '#2e4055' }}>vs</span><span style={{ color: AI_COL }}>AI ⬤</span>
             </div>
             <button data-h onClick={start}
-              style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '9px 26px', background: '#00ff88', border: 'none', color: '#020c06', fontWeight: 700, letterSpacing: 2, cursor: 'none', transition: 'box-shadow .2s' }}
+              style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '9px 26px', background: '#00ff88', border: 'none', color: '#020c06', fontWeight: 700, letterSpacing: 2, cursor: 'pointer', transition: 'box-shadow .2s' }}
               onMouseEnter={e => e.target.style.boxShadow = '0 0 28px rgba(0,255,136,.7)'}
               onMouseLeave={e => e.target.style.boxShadow = 'none'}>▶ START GAME</button>
           </div>
@@ -186,7 +212,7 @@ export default function ZombieLandGame({ active }) {
             </div>
             <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text2)' }}>{score.p1} — {score.p2}</div>
             <button data-h onClick={() => { restart(); setTimeout(start, 50); }}
-              style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '9px 26px', background: winner === 'YOU' ? 'rgba(0,255,136,.12)' : 'rgba(255,59,92,.12)', border: `1px solid ${winner === 'YOU' ? PLAYER_COL : AI_COL}`, color: winner === 'YOU' ? PLAYER_COL : AI_COL, cursor: 'none', letterSpacing: 2, transition: 'all .2s' }}>↺ REMATCH</button>
+              style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '9px 26px', background: winner === 'YOU' ? 'rgba(0,255,136,.12)' : 'rgba(255,59,92,.12)', border: `1px solid ${winner === 'YOU' ? PLAYER_COL : AI_COL}`, color: winner === 'YOU' ? PLAYER_COL : AI_COL, cursor: 'pointer', letterSpacing: 2, transition: 'all .2s' }}>↺ REMATCH</button>
           </div>
         )}
       </div>

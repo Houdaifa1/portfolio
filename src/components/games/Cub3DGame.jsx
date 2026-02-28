@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import TouchControls from '../TouchControls';
 
-// --- map data ---
 const MAP = [
   [1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,1],
@@ -16,36 +16,30 @@ const MAP = [
 const ROWS = MAP.length;
 const COLS = MAP[0].length;
 
-// --- vector rotation (y down) ---
 function rotVec(x, y, a) {
   const c = Math.cos(a), s = Math.sin(a);
   return [x * c - y * s, x * s + y * c];
 }
 
-// --- collision check ---
 function isOpen(x, y) {
   const mx = Math.floor(x);
   const my = Math.floor(y);
   return my >= 0 && my < ROWS && mx >= 0 && mx < COLS && MAP[my][mx] === 0;
 }
 
-// --- raycasting draw function (optimised) ---
 function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
-  // sky gradient
   const sky = ctx.createLinearGradient(0, 0, 0, H / 2);
   sky.addColorStop(0, '#020408');
   sky.addColorStop(1, '#060d1a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H / 2);
 
-  // floor gradient
   const floor = ctx.createLinearGradient(0, H / 2, 0, H);
   floor.addColorStop(0, '#050810');
   floor.addColorStop(1, '#020305');
   ctx.fillStyle = floor;
   ctx.fillRect(0, H / 2, W, H / 2);
 
-  // raycast loop
   for (let col = 0; col < W; col++) {
     const camX = (2 * col) / W - 1;
     const rdx = dx + cx * camX;
@@ -85,7 +79,6 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
     const drawStart = (H - lineHeight) / 2;
     const brightness = Math.max(0, 1 - perpDist / 8) * (side === 1 ? 0.45 : 1.0);
 
-    // wall color (cyan-blue)
     const gVal = Math.floor(80 + 132 * brightness);
     const bVal = Math.floor(160 + 95 * brightness);
     ctx.fillStyle = `rgb(0,${gVal},${bVal})`;
@@ -96,7 +89,6 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
     }
   }
 
-  // minimap
   const MS = 10;
   const mmX = W - COLS * MS - 8;
   const mmY = 8;
@@ -143,6 +135,7 @@ function drawScene(ctx, W, H, px, py, dx, dy, cx, cy) {
 export default function Cub3DGame({ active }) {
   const canvasRef = useRef(null);
   const keysRef = useRef(new Set());
+  const touchDirRef = useRef({ up: false, down: false, left: false, right: false });
   const stateRef = useRef({
     px: 1.5, py: 1.5,
     dx: 1, dy: 0,
@@ -151,7 +144,8 @@ export default function Cub3DGame({ active }) {
   const rafRef = useRef(null);
   const [focused, setFocused] = useState(false);
 
-  // --- key handling directly on canvas ---
+  const isTouch = 'ontouchstart' in window;
+
   const handleKeyDown = useCallback((e) => {
     const key = e.key;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'].includes(key)) {
@@ -168,6 +162,7 @@ export default function Cub3DGame({ active }) {
   const handleBlur = useCallback(() => {
     setFocused(false);
     keysRef.current.clear();
+    touchDirRef.current = { up: false, down: false, left: false, right: false };
   }, []);
 
   const handleFocus = useCallback(() => {
@@ -175,16 +170,15 @@ export default function Cub3DGame({ active }) {
   }, []);
 
   const handleCanvasClick = useCallback(() => {
-    if (canvasRef.current) {
-      canvasRef.current.focus();
-      setTimeout(() => canvasRef.current?.focus(), 10);
-    }
+    canvasRef.current?.focus();
   }, []);
 
-  // --- Determine if the game loop should run ---
+  const handleTouchMove = useCallback((dirs) => {
+    touchDirRef.current = dirs;
+  }, []);
+
   const loopActive = active || focused;
 
-  // --- Game loop (starts when loopActive becomes true) ---
   useEffect(() => {
     if (!loopActive || !canvasRef.current) return;
 
@@ -198,20 +192,21 @@ export default function Cub3DGame({ active }) {
     const loop = () => {
       const s = stateRef.current;
       const keys = keysRef.current;
+      const touch = touchDirRef.current;
 
-      if (keys.has('ArrowRight') || keys.has('d')) {
+      if (keys.has('ArrowRight') || keys.has('d') || touch.right) {
         [s.dx, s.dy] = rotVec(s.dx, s.dy, ROT);
         [s.cx, s.cy] = rotVec(s.cx, s.cy, ROT);
       }
-      if (keys.has('ArrowLeft') || keys.has('a')) {
+      if (keys.has('ArrowLeft') || keys.has('a') || touch.left) {
         [s.dx, s.dy] = rotVec(s.dx, s.dy, -ROT);
         [s.cx, s.cy] = rotVec(s.cx, s.cy, -ROT);
       }
-      if (keys.has('ArrowUp') || keys.has('w')) {
+      if (keys.has('ArrowUp') || keys.has('w') || touch.up) {
         if (isOpen(s.px + s.dx * SPD, s.py)) s.px += s.dx * SPD;
         if (isOpen(s.px, s.py + s.dy * SPD)) s.py += s.dy * SPD;
       }
-      if (keys.has('ArrowDown') || keys.has('s')) {
+      if (keys.has('ArrowDown') || keys.has('s') || touch.down) {
         if (isOpen(s.px - s.dx * SPD, s.py)) s.px -= s.dx * SPD;
         if (isOpen(s.px, s.py - s.dy * SPD)) s.py -= s.dy * SPD;
       }
@@ -227,7 +222,6 @@ export default function Cub3DGame({ active }) {
     };
   }, [loopActive]);
 
-  // --- Reset player position when component becomes completely inactive ---
   useEffect(() => {
     if (!active && !focused) {
       stateRef.current = { px: 1.5, py: 1.5, dx: 1, dy: 0, cx: 0, cy: 0.6 };
@@ -235,7 +229,7 @@ export default function Cub3DGame({ active }) {
   }, [active, focused]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
         <canvas
           ref={canvasRef}
@@ -253,9 +247,10 @@ export default function Cub3DGame({ active }) {
             height: 'auto',
             border: `1px solid ${focused ? 'rgba(0,212,255,0.55)' : 'var(--border)'}`,
             borderRadius: 6,
-            cursor: focused ? 'crosshair' : 'pointer',
+            cursor: focused && !isTouch ? 'crosshair' : 'pointer',
             outline: 'none',
             transition: 'border-color .2s',
+            touchAction: 'none',
           }}
         />
         {!focused && (
@@ -283,10 +278,11 @@ export default function Cub3DGame({ active }) {
               padding: '10px 24px',
               borderRadius: 4,
             }}>
-              ▶ CLICK TO PLAY
+              ▶ {isTouch ? 'TAP TO PLAY' : 'CLICK TO PLAY'}
             </div>
           </div>
         )}
+        {isTouch && focused && <TouchControls onMove={handleTouchMove} />}
       </div>
       <div style={{
         display: 'flex',
@@ -297,12 +293,19 @@ export default function Cub3DGame({ active }) {
         letterSpacing: 1.5,
         textTransform: 'uppercase',
         transition: 'color .3s',
+        marginTop: 8,
       }}>
-        <span>W / ↑ forward</span>
-        <span>S / ↓ back</span>
-        <span>A / ← turn left</span>
-        <span>D / → turn right</span>
-        {focused && <span style={{ color: '#243850' }}>· click outside to release</span>}
+        {!isTouch ? (
+          <>
+            <span>W / ↑ forward</span>
+            <span>S / ↓ back</span>
+            <span>A / ← turn left</span>
+            <span>D / → turn right</span>
+          </>
+        ) : (
+          <span>Use on‑screen buttons</span>
+        )}
+        {focused && <span style={{ color: '#243850' }}>· tap outside to release</span>}
       </div>
     </div>
   );

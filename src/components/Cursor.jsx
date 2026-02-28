@@ -2,6 +2,9 @@ import { useEffect } from 'react';
 
 export default function Cursor() {
   useEffect(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouch) return; // don't render custom cursor on touch devices
+
     const cur = document.getElementById('cur');
     const ring = document.getElementById('curR');
     if (!cur || !ring) return;
