@@ -55,79 +55,112 @@ export default function Hero() {
         </div>
 
         {/* CV file-card download */}
+        <style>{`
+          @keyframes cvPulse {
+            0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.0), 0 0 18px rgba(0,212,255,0.06); }
+            50%      { box-shadow: 0 0 0 6px rgba(0,212,255,0.0), 0 0 28px rgba(0,212,255,0.13); }
+          }
+          @keyframes cvFloat {
+            0%,100% { transform: translateY(0px); }
+            50%      { transform: translateY(-3px); }
+          }
+          @keyframes cvArrowBounce {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(3px); }
+          }
+          @keyframes cvDot {
+            0%,100% { opacity: 0.3; } 50% { opacity: 1; }
+          }
+          .cv-card { animation: fadeUp .7s .65s ease both, cvFloat 3.8s 1.4s ease-in-out infinite; }
+          .cv-card:hover { animation: none !important; }
+          .cv-card-arrow { animation: cvArrowBounce 1.6s 1.8s ease-in-out infinite; }
+          .cv-card:hover .cv-card-arrow { animation: none; transform: translateY(3px) !important; }
+        `}</style>
+
         <div
           onClick={openCV}
           data-h
+          className="cv-card"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 14,
-            padding: '12px 18px',
-            background: 'rgba(10,16,28,0.7)',
-            border: '1px solid rgba(0,212,255,0.14)',
+            padding: '11px 16px 11px 14px',
+            background: 'rgba(8,13,24,0.75)',
+            border: '1px solid rgba(0,212,255,0.16)',
             borderRadius: 10,
             cursor: 'pointer',
             fontFamily: 'var(--mono)',
-            transition: 'all 0.22s ease',
-            animation: 'fadeUp .7s .65s ease both', opacity: 0, animationFillMode: 'forwards',
+            transition: 'background 0.22s, border-color 0.22s, box-shadow 0.22s',
+            opacity: 0, animationFillMode: 'forwards',
             position: 'relative', overflow: 'hidden',
+            animationName: 'fadeUp, cvFloat',
+            animationDuration: '.7s, 3.8s',
+            animationDelay: '.65s, 1.4s',
+            animationTimingFunction: 'ease, ease-in-out',
+            animationFillMode: 'forwards, none',
+            animationIterationCount: '1, infinite',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(0,212,255,0.06)';
-            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.35)';
-            e.currentTarget.style.boxShadow = '0 0 30px rgba(0,212,255,0.1)';
-            e.currentTarget.querySelector('.cv-arrow').style.transform = 'translateY(2px)';
+            e.currentTarget.style.background = 'rgba(0,212,255,0.07)';
+            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.4)';
+            e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,0.14), inset 0 0 20px rgba(0,212,255,0.03)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(10,16,28,0.7)';
-            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.14)';
+            e.currentTarget.style.background = 'rgba(8,13,24,0.75)';
+            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.16)';
             e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.querySelector('.cv-arrow').style.transform = 'translateY(0)';
           }}
         >
-          {/* PDF icon */}
+          {/* Shimmer sweep on hover */}
           <div style={{
-            width: 32, height: 38, position: 'relative', flexShrink: 0,
-          }}>
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'linear-gradient(105deg,transparent 40%,rgba(0,212,255,0.04) 50%,transparent 60%)',
+            borderRadius: 10,
+          }} />
+
+          {/* PDF icon */}
+          <div style={{ width: 30, height: 36, flexShrink: 0, position: 'relative' }}>
             <div style={{
-              width: 32, height: 38,
-              background: 'rgba(0,212,255,0.08)',
-              border: '1px solid rgba(0,212,255,0.2)',
+              width: 30, height: 36,
+              background: 'rgba(0,212,255,0.07)',
+              border: '1px solid rgba(0,212,255,0.18)',
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative',
             }}>
-              {/* Folded corner */}
               <div style={{
                 position: 'absolute', top: 0, right: 0,
-                width: 0, height: 0,
-                borderStyle: 'solid',
-                borderWidth: '0 8px 8px 0',
-                borderColor: `transparent rgba(0,212,255,0.3) transparent transparent`,
+                width: 0, height: 0, borderStyle: 'solid',
+                borderWidth: '0 7px 7px 0',
+                borderColor: 'transparent rgba(0,212,255,0.28) transparent transparent',
               }} />
-              <span style={{ fontSize: 9, color: '#00d4ff', fontWeight: 700, letterSpacing: 0 }}>PDF</span>
+              <span style={{ fontSize: 8, color: '#00d4ff', fontWeight: 700 }}>PDF</span>
             </div>
           </div>
 
           {/* File info */}
           <div>
-            <div style={{ fontSize: 11, color: '#c0d8f0', letterSpacing: 0.5, marginBottom: 3 }}>
+            <div style={{ fontSize: 11, color: '#d0e4f4', letterSpacing: 0.4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7 }}>
               Houdaifa_Drahm_CV.pdf
+              {/* live dot */}
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: '#00ff88',
+                display: 'inline-block',
+                animation: 'cvDot 2s ease-in-out infinite',
+                boxShadow: '0 0 6px #00ff88',
+              }} />
             </div>
-            <div style={{ fontSize: 10, color: '#4a6480', display: 'flex', gap: 10 }}>
-              <span>94K</span>
-              <span>·</span>
-              <span>Mar 2026</span>
-              <span>·</span>
-              <span style={{ color: '#00ff8888' }}>1 page</span>
+            <div style={{ fontSize: 9, color: '#3a5470', display: 'flex', gap: 8, letterSpacing: 0.3 }}>
+              <span>94K</span><span>·</span><span>Mar 2026</span><span>·</span>
+              <span style={{ color: 'rgba(0,255,136,0.5)' }}>1 page</span>
             </div>
           </div>
 
-          {/* Download arrow */}
-          <div className="cv-arrow" style={{
-            marginLeft: 8, fontSize: 14, color: '#00d4ff',
+          {/* Arrow */}
+          <div className="cv-card-arrow" style={{
+            marginLeft: 6, fontSize: 13, color: '#00d4ff', flexShrink: 0,
             transition: 'transform 0.2s ease',
-          }}>
-            ⬇
-          </div>
+          }}>⬇</div>
         </div>
 
         <div style={{ position: 'absolute', bottom: 36, left: 48, display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--mono)', fontSize: 10, color: '#4a6480', letterSpacing: 2, animation: 'fadeUp .7s .8s ease both', opacity: 0, animationFillMode: 'forwards' }}>

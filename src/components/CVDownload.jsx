@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 const SEQ = [
   { d: 0,    t: '$ ssh houdaifa@1337.ma -i ~/.ssh/portfolio_key', c: 'cmd' },
-  { d: 560,  t: '✓  Connected · UM6P Cluster · 42 Network · Benguerir', c: 'ok' },
+  { d: 560,  t: '✓  Connected · 1337 Cluster · 42 Network · Benguerir', c: 'ok' },
   { d: 1020, t: '$ find ~/cv -name "*.pdf" -ls', c: 'cmd' },
   { d: 1340, t: '  94K  Mar 2026  /home/houdaifa/cv/Houdaifa_Drahm_CV.pdf', c: 'file' },
   { d: 1740, t: '$ cat ~/cv/metadata.conf', c: 'cmd' },
