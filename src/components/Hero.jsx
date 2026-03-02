@@ -49,9 +49,9 @@ export default function Hero() {
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,.6)'}
             onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>VIEW PROJECTS →</button>
           <button onClick={() => rafScrollTo('contact')} data-h
-            style={{ padding: '14px 32px', background: 'transparent', color: '#a8c4dc', fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', border: '1px solid rgba(168,196,220,.3)', cursor: 'pointer', transition: 'all .2s', borderRadius: 8 }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#00d4ff'; e.currentTarget.style.borderColor = '#00d4ff'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#a8c4dc'; e.currentTarget.style.borderColor = 'rgba(168,196,220,.3)'; }}>GET IN TOUCH</button>
+            style={{ padding: '14px 32px', background: '#00d4ff', color: '#07090e', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', border: 'none', cursor: 'pointer', transition: 'box-shadow .2s', borderRadius: 8 }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,.6)'}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>GET IN TOUCH</button>
         </div>
 
         {/* CV file-card download */}
@@ -82,9 +82,6 @@ export default function Hero() {
               cvFloat 3.8s 1.4s ease-in-out infinite,
               cvGlow 3.8s 1.4s ease-in-out infinite;
           }
-          .cv-card:hover {
-            animation: none !important;
-          }
           .cv-card .cv-shimmer {
             animation: cvShimmer 3.2s 2s ease-in-out infinite;
           }
@@ -92,7 +89,6 @@ export default function Hero() {
             animation: cvShimmer 0.7s ease-in-out forwards;
           }
           .cv-card-arrow { animation: cvArrowBounce 1.6s 1.8s ease-in-out infinite; }
-          .cv-card:hover .cv-card-arrow { animation: none; transform: translateY(4px) !important; }
         `}</style>
 
         <div
