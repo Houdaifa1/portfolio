@@ -56,25 +56,43 @@ export default function Hero() {
 
         {/* CV file-card download */}
         <style>{`
-          @keyframes cvPulse {
-            0%,100% { box-shadow: 0 0 0 0 rgba(0,212,255,0.0), 0 0 18px rgba(0,212,255,0.06); }
-            50%      { box-shadow: 0 0 0 6px rgba(0,212,255,0.0), 0 0 28px rgba(0,212,255,0.13); }
-          }
           @keyframes cvFloat {
             0%,100% { transform: translateY(0px); }
-            50%      { transform: translateY(-3px); }
+            50%      { transform: translateY(-4px); }
           }
           @keyframes cvArrowBounce {
             0%,100% { transform: translateY(0); }
-            50%      { transform: translateY(3px); }
+            50%      { transform: translateY(4px); }
           }
           @keyframes cvDot {
-            0%,100% { opacity: 0.3; } 50% { opacity: 1; }
+            0%,100% { opacity: 0.4; transform: scale(1); }
+            50%      { opacity: 1; transform: scale(1.3); }
           }
-          .cv-card { animation: fadeUp .7s .65s ease both, cvFloat 3.8s 1.4s ease-in-out infinite; }
-          .cv-card:hover { animation: none !important; }
+          @keyframes cvGlow {
+            0%,100% { box-shadow: 0 0 18px rgba(0,212,255,0.35), 0 0 40px rgba(0,102,255,0.18); }
+            50%      { box-shadow: 0 0 28px rgba(0,212,255,0.55), 0 0 60px rgba(0,102,255,0.28); }
+          }
+          @keyframes cvShimmer {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(250%); }
+          }
+          .cv-card {
+            animation:
+              fadeUp .7s .65s ease both,
+              cvFloat 3.8s 1.4s ease-in-out infinite,
+              cvGlow 3.8s 1.4s ease-in-out infinite;
+          }
+          .cv-card:hover {
+            animation: none !important;
+          }
+          .cv-card .cv-shimmer {
+            animation: cvShimmer 3.2s 2s ease-in-out infinite;
+          }
+          .cv-card:hover .cv-shimmer {
+            animation: cvShimmer 0.7s ease-in-out forwards;
+          }
           .cv-card-arrow { animation: cvArrowBounce 1.6s 1.8s ease-in-out infinite; }
-          .cv-card:hover .cv-card-arrow { animation: none; transform: translateY(3px) !important; }
+          .cv-card:hover .cv-card-arrow { animation: none; transform: translateY(4px) !important; }
         `}</style>
 
         <div
@@ -83,46 +101,44 @@ export default function Hero() {
           className="cv-card"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 14,
-            padding: '11px 16px 11px 14px',
-            background: 'rgba(8,13,24,0.75)',
-            border: '1px solid rgba(0,212,255,0.16)',
+            padding: '13px 20px 13px 16px',
+            background: 'linear-gradient(135deg, rgba(0,60,140,0.55) 0%, rgba(0,30,80,0.65) 100%)',
+            border: '1px solid rgba(0,212,255,0.45)',
             borderRadius: 10,
             cursor: 'pointer',
             fontFamily: 'var(--mono)',
-            transition: 'background 0.22s, border-color 0.22s, box-shadow 0.22s',
+            transition: 'background 0.22s, border-color 0.22s, box-shadow 0.22s, transform 0.15s',
             opacity: 0, animationFillMode: 'forwards',
             position: 'relative', overflow: 'hidden',
-            animationName: 'fadeUp, cvFloat',
-            animationDuration: '.7s, 3.8s',
-            animationDelay: '.65s, 1.4s',
-            animationTimingFunction: 'ease, ease-in-out',
-            animationFillMode: 'forwards, none',
-            animationIterationCount: '1, infinite',
           }}
           onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(0,212,255,0.07)';
-            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.4)';
-            e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,0.14), inset 0 0 20px rgba(0,212,255,0.03)';
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,90,200,0.65) 0%, rgba(0,50,120,0.75) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.75)';
+            e.currentTarget.style.boxShadow = '0 0 48px rgba(0,212,255,0.5), 0 0 90px rgba(0,100,255,0.3)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(8,13,24,0.75)';
-            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.16)';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0,60,140,0.55) 0%, rgba(0,30,80,0.65) 100%)';
+            e.currentTarget.style.borderColor = 'rgba(0,212,255,0.45)';
+            e.currentTarget.style.boxShadow = '';
+            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          {/* Shimmer sweep on hover */}
-          <div style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'linear-gradient(105deg,transparent 40%,rgba(0,212,255,0.04) 50%,transparent 60%)',
+          {/* Shimmer sweep */}
+          <div className="cv-shimmer" style={{
+            position: 'absolute', top: 0, left: 0,
+            width: '40%', height: '100%',
+            background: 'linear-gradient(105deg, transparent 0%, rgba(0,212,255,0.12) 50%, transparent 100%)',
+            pointerEvents: 'none',
             borderRadius: 10,
           }} />
 
           {/* PDF icon */}
-          <div style={{ width: 30, height: 36, flexShrink: 0, position: 'relative' }}>
+          <div style={{ width: 30, height: 36, flexShrink: 0 }}>
             <div style={{
               width: 30, height: 36,
-              background: 'rgba(0,212,255,0.07)',
-              border: '1px solid rgba(0,212,255,0.18)',
+              background: 'rgba(0,212,255,0.15)',
+              border: '1px solid rgba(0,212,255,0.4)',
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative',
@@ -130,8 +146,8 @@ export default function Hero() {
               <div style={{
                 position: 'absolute', top: 0, right: 0,
                 width: 0, height: 0, borderStyle: 'solid',
-                borderWidth: '0 7px 7px 0',
-                borderColor: 'transparent rgba(0,212,255,0.28) transparent transparent',
+                borderWidth: '0 8px 8px 0',
+                borderColor: 'transparent rgba(0,212,255,0.6) transparent transparent',
               }} />
               <span style={{ fontSize: 8, color: '#00d4ff', fontWeight: 700 }}>PDF</span>
             </div>
@@ -139,27 +155,27 @@ export default function Hero() {
 
           {/* File info */}
           <div>
-            <div style={{ fontSize: 11, color: '#d0e4f4', letterSpacing: 0.4, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <div style={{ fontSize: 11, color: '#e8f4ff', letterSpacing: 0.5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>
               Houdaifa_Drahm_CV.pdf
-              {/* live dot */}
               <span style={{
                 width: 5, height: 5, borderRadius: '50%',
                 background: '#00ff88',
                 display: 'inline-block',
                 animation: 'cvDot 2s ease-in-out infinite',
-                boxShadow: '0 0 6px #00ff88',
+                boxShadow: '0 0 8px #00ff88',
               }} />
             </div>
-            <div style={{ fontSize: 9, color: '#3a5470', display: 'flex', gap: 8, letterSpacing: 0.3 }}>
+            <div style={{ fontSize: 9, color: 'rgba(0,212,255,0.55)', display: 'flex', gap: 8, letterSpacing: 0.3 }}>
               <span>94K</span><span>·</span><span>Mar 2026</span><span>·</span>
-              <span style={{ color: 'rgba(0,255,136,0.5)' }}>1 page</span>
+              <span style={{ color: 'rgba(0,255,136,0.7)' }}>1 page</span>
             </div>
           </div>
 
           {/* Arrow */}
           <div className="cv-card-arrow" style={{
-            marginLeft: 6, fontSize: 13, color: '#00d4ff', flexShrink: 0,
+            marginLeft: 4, fontSize: 14, color: '#00d4ff', flexShrink: 0,
             transition: 'transform 0.2s ease',
+            filter: 'drop-shadow(0 0 4px rgba(0,212,255,0.8))',
           }}>⬇</div>
         </div>
 
