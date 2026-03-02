@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import SpaceCanvas from './components/SpaceCanvas';
 import Cursor from './components/Cursor';
 import Nav from './components/Nav';
@@ -7,20 +7,34 @@ import Skills from './components/Skills';
 import Projects from './components/Projects';
 import About from './components/About';
 import Contact from './components/Contact';
+import CVDownload from './components/CVDownload';
 
 export default function App() {
+  const [showCV, setShowCV] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
+
+    // Reveal observer
     const obs = new IntersectionObserver((entries) => {
       entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     const timer = setTimeout(() => {
       document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach(el => obs.observe(el));
     }, 100);
-    return () => { obs.disconnect(); clearTimeout(timer); };
+
+    // CV modal event listener
+    const openHandler = () => setShowCV(true);
+    window.addEventListener('open-cv-download', openHandler);
+
+    return () => {
+      obs.disconnect();
+      clearTimeout(timer);
+      window.removeEventListener('open-cv-download', openHandler);
+    };
   }, []);
 
   return (
@@ -40,6 +54,8 @@ export default function App() {
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>Morocco 🇲🇦</span>
         </div>
       </footer>
+
+      {showCV && <CVDownload onClose={() => setShowCV(false)} />}
     </>
   );
 }
