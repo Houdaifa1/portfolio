@@ -7,7 +7,7 @@ export default function Skills() {
     { l: 'Graphics', t: '3D & Games', icon: '🎮', tags: ['Raycasting', 'MinilibX', 'OpenGL', '3D Math', 'Sprite Rendering', 'Game Loop'], accent: '#5ab4d6' },
     { l: 'Networking', t: 'TCP/IP', icon: '🌐', tags: ['Subnetting', 'CIDR', 'IPv4 Routing', 'TCP/UDP Sockets', 'HTTP/1.1'], accent: '#7ec8e3' },
     { l: 'Data', t: 'Databases', icon: '🗄', tags: ['PostgreSQL', 'MariaDB'], accent: '#00d4ff' },
-    { l: 'Human', t: 'Languages', icon: '🌍', tags: ['Arabic — Native', 'English — Professional', 'French — Professional'], accent: '#5ab4d6' },
+    { l: 'Human', t: 'Languages', icon: '🌍', tags: ['Arabic, Native', 'English, Professional', 'French, Professional'], accent: '#5ab4d6' },
   ];
 
   return (

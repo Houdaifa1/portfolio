@@ -4,6 +4,7 @@ export default function ZombieLandGame({ active }) {
   const canvas = useRef(null);
   const state = useRef(null);
   const raf = useRef(null);
+  const cleanupInput = useRef(() => {});
   const [score, setScore] = useState({ p1: 0, p2: 0 });
   const [started, setStarted] = useState(false);
   const [winner, setWinner] = useState(null);
@@ -26,17 +27,24 @@ export default function ZombieLandGame({ active }) {
   useEffect(() => {
     if (!active) {
       if (raf.current) cancelAnimationFrame(raf.current);
+      cleanupInput.current();
       state.current = null;
       setScore({ p1: 0, p2: 0 }); setStarted(false); setWinner(null);
     }
+    return () => {
+      if (raf.current) cancelAnimationFrame(raf.current);
+      cleanupInput.current();
+    };
   }, [active]);
 
   const start = () => {
+    if (raf.current) cancelAnimationFrame(raf.current);
+    cleanupInput.current();
     setWinner(null); setScore({ p1: 0, p2: 0 }); setStarted(true);
     state.current = initState();
     const c = canvas.current; if (!c) return;
 
-    const isTouch = 'ontouchstart' in window;
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
     const onMove = e => {
       if (!state.current) return;
@@ -60,13 +68,20 @@ export default function ZombieLandGame({ active }) {
       }
     };
 
+    const onEnd = e => e.preventDefault();
     if (isTouch) {
       c.addEventListener('touchmove', onMove, { passive: false });
       c.addEventListener('touchstart', onMove, { passive: false });
-      c.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+      c.addEventListener('touchend', onEnd, { passive: false });
     } else {
       c.addEventListener('mousemove', onMove);
     }
+    cleanupInput.current = () => {
+      c.removeEventListener('mousemove', onMove);
+      c.removeEventListener('touchmove', onMove);
+      c.removeEventListener('touchstart', onMove);
+      c.removeEventListener('touchend', onEnd);
+    };
 
     const ctx = c.getContext('2d');
     const goaly = H / 2 - GH / 2, goalY2 = H / 2 + GH / 2;
@@ -118,12 +133,12 @@ export default function ZombieLandGame({ active }) {
       if (s.ball.x - BR <= GW && inGoal) {
         s.score.p2++; setScore({ ...s.score });
         Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
-        if (s.score.p2 >= MAX) { s.on = false; setWinner('AI'); c.removeEventListener('mousemove', onMove); c.removeEventListener('touchmove', onMove); c.removeEventListener('touchstart', onMove); return; }
+        if (s.score.p2 >= MAX) { s.on = false; setWinner('AI'); cleanupInput.current(); return; }
       }
       if (s.ball.x + BR >= W - GW && inGoal) {
         s.score.p1++; setScore({ ...s.score });
         Object.assign(s, { ball: { x: W / 2, y: H / 2, vx: -FIXED_SPEED, vy: (Math.random() - .5) * 3 }, p1: { x: PR + GW + 4, y: H / 2 }, p2: { x: AI_HOME_X, y: H / 2 }, aiNudge: 0 });
-        if (s.score.p1 >= MAX) { s.on = false; setWinner('YOU'); c.removeEventListener('mousemove', onMove); c.removeEventListener('touchmove', onMove); c.removeEventListener('touchstart', onMove); return; }
+        if (s.score.p1 >= MAX) { s.on = false; setWinner('YOU'); cleanupInput.current(); return; }
       }
       if (s.ball.x - BR <= GW && !inGoal) { s.ball.x = GW + BR; s.ball.vx = Math.abs(s.ball.vx); }
       if (s.ball.x + BR >= W - GW && !inGoal) { s.ball.x = W - GW - BR; s.ball.vx = -Math.abs(s.ball.vx); }
@@ -160,21 +175,16 @@ export default function ZombieLandGame({ active }) {
       raf.current = requestAnimationFrame(loop);
     };
     raf.current = requestAnimationFrame(loop);
-    return () => {
-      c.removeEventListener('mousemove', onMove);
-      c.removeEventListener('touchmove', onMove);
-      c.removeEventListener('touchstart', onMove);
-      c.removeEventListener('touchend', onMove);
-    };
   };
 
   const restart = () => {
     if (raf.current) cancelAnimationFrame(raf.current);
+    cleanupInput.current();
     state.current = null; setWinner(null); setScore({ p1: 0, p2: 0 }); setStarted(false);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+    <div className="zombie-game" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%' }}>
       <div style={{ width: '100%', maxWidth: 560, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 11 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 9, height: 9, borderRadius: '50%', background: PLAYER_COL, boxShadow: `0 0 8px ${PLAYER_COL}` }} />
@@ -193,7 +203,7 @@ export default function ZombieLandGame({ active }) {
         {!started && !winner && (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(2,10,4,.9)', backdropFilter: 'blur(6px)', gap: 14 }}>
             <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'rgba(0,255,136,.5)', letterSpacing: 3 }}>
-              {'ontouchstart' in window ? 'TOUCH LEFT HALF TO CONTROL' : 'MOVE MOUSE TO CONTROL · LEFT HALF'}
+              {window.matchMedia('(pointer: coarse)').matches ? 'DRAG ON THE LEFT HALF TO CONTROL' : 'MOVE THE MOUSE ON THE LEFT HALF'}
             </div>
             <div style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 800, letterSpacing: -1, color: '#00ff88' }}>🧟 ZOMBIE LAND</div>
             <div style={{ display: 'flex', gap: 20, fontFamily: 'var(--mono)', fontSize: 10 }}>
@@ -210,7 +220,7 @@ export default function ZombieLandGame({ active }) {
             <div style={{ fontFamily: 'var(--display)', fontSize: 38, fontWeight: 800, letterSpacing: -2, color: winner === 'YOU' ? PLAYER_COL : AI_COL }}>
               {winner === 'YOU' ? '🏆 YOU WIN!' : '💀 AI WINS'}
             </div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text2)' }}>{score.p1} — {score.p2}</div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text2)' }}>{score.p1} to {score.p2}</div>
             <button data-h onClick={() => { restart(); setTimeout(start, 50); }}
               style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '9px 26px', background: winner === 'YOU' ? 'rgba(0,255,136,.12)' : 'rgba(255,59,92,.12)', border: `1px solid ${winner === 'YOU' ? PLAYER_COL : AI_COL}`, color: winner === 'YOU' ? PLAYER_COL : AI_COL, cursor: 'pointer', letterSpacing: 2, transition: 'all .2s' }}>↺ REMATCH</button>
           </div>

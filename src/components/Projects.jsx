@@ -167,7 +167,7 @@ function CoreRepoGrid({ repos, accent }) {
         borderTop: '1px solid rgba(40,70,110,0.3)',
         fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: 2,
         color: '#3a5470', marginBottom: 10, textTransform: 'uppercase',
-      }}>── repositories</div>
+      }}>Repositories</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
         {repos.map(({ label, href }, i) => (
           <CorePill key={label} href={href} label={label} delay={i * 50} />
@@ -215,7 +215,7 @@ function CorePill({ href, label, delay }) {
 
 /* ─── Projects section ───────────────────────────────────── */
 export default function Projects() {
-  const [visibleId, setVisibleId] = useState(null);
+  const [visibleIds, setVisibleIds] = useState(() => new Set());
   const cardRefs = useRef({});
 
   useEffect(() => {
@@ -225,7 +225,12 @@ export default function Projects() {
       const el = cardRefs.current[id];
       if (!el) return;
       const obs = new IntersectionObserver(([e]) => {
-        if (e.isIntersecting) setVisibleId(id);
+        setVisibleIds(current => {
+          const next = new Set(current);
+          if (e.isIntersecting) next.add(id);
+          else next.delete(id);
+          return next;
+        });
       }, { threshold });
       obs.observe(el);
       observers[id] = obs;
@@ -237,72 +242,72 @@ export default function Projects() {
 
   const projects = [
     {
-      id: 'trans', num: '01', name: 'ft_transcendence', type: 'Full-Stack · Real-Time · DevOps',
+      id: 'trans', num: '01', name: 'ft_transcendence', type: 'Full Stack / Real Time / DevOps',
       tags: ['NestJS','TypeScript','Socket.io','JWT','Docker','GitHub Actions','DigitalOcean','PostgreSQL','React'],
-      desc: 'NETPONG — deployed at netpong.games. Real-time multiplayer air hockey with 4 themed arenas. NestJS microservices, Socket.io game rooms, JWT auth, global leaderboard, live chat. Zero-downtime CI/CD via GitHub Actions.',
+      desc: 'NETPONG is a deployed multiplayer air hockey platform with four themed arenas. I worked with NestJS services, Socket.io game rooms, JWT authentication, leaderboards, live chat, and a GitHub Actions deployment pipeline.',
       Demo: Empty, badge: '🎮 LIVE GALLERY', Gallery: NetpongGallery, accent: '#c084fc',
       repo: 'https://github.com/fttranscendenceorganization/ft_transcendence',
     },
     {
-      id: 'mini', num: '02', name: 'Minishell', type: 'Systems · C · Unix',
+      id: 'mini', num: '02', name: 'Minishell', type: 'Systems / C / Unix',
       tags: ['C','POSIX','Unix Signals','Bash','Process Management'],
-      desc: 'Fully functional Unix shell in C — Bash-compliant tokenization, parsing, execution engine. Multi-pipe chaining, heredocs, I/O redirections, env variable expansion, signal handling (SIGINT/SIGQUIT). 100% memory-safe.',
+      desc: 'A Unix shell written in C with tokenization, parsing, command execution, pipelines, heredocs, I/O redirection, environment expansion, and signal handling.',
       Demo: MinishellGame, badge: '⌨ LIVE SHELL', accent: '#00d4ff',
       repo: `${GH}/minishell`,
     },
     {
-      id: 'incep', num: '03', name: 'Inception', type: 'DevOps · Docker · Infrastructure',
+      id: 'incep', num: '03', name: 'Inception', type: 'DevOps / Docker / Infrastructure',
       tags: ['Docker Compose','Nginx','TLS/SSL','MariaDB','WordPress'],
-      desc: 'Multi-container infrastructure using Docker Compose — Nginx with TLS termination, MariaDB with persistent volumes, WordPress in isolated containers with custom bridge networking.',
+      desc: 'A multi-container Docker Compose environment with Nginx TLS termination, MariaDB persistence, WordPress, isolated services, and custom bridge networking.',
       Demo: DockerGame, badge: '🐳 LIVE CONTAINERS', accent: '#00d4ff',
       repo: `${GH}/inception`,
     },
     {
-      id: 'philo', num: '04', name: 'Philosophers', type: 'Concurrency · C · Systems',
+      id: 'philo', num: '04', name: 'Philosophers', type: 'Concurrency / C / Systems',
       tags: ['C','pthreads','Mutexes','Semaphores','Deadlock Prevention'],
       desc: 'Concurrent dining philosophers simulation using pthreads and mutexes. Guarantees deadlock-free and starvation-free execution. Zero data races under extended stress testing.',
       Demo: PhilosophersGame, badge: '🍝 VISUALIZE', accent: '#5ab4d6',
       repo: `${GH}/philosophers`,
     },
     {
-      id: 'web', num: '05', name: 'Webserv', type: 'Systems · C++ · Networking',
+      id: 'web', num: '05', name: 'Webserv', type: 'Systems / C++ / Networking',
       tags: ['C++','HTTP/1.1','poll()/select()','CGI','TCP Sockets'],
-      desc: 'Production-grade HTTP/1.1 server from scratch in C++, zero external libraries. Non-blocking I/O via poll()/select() for concurrent connections. Supports GET, POST, DELETE, chunked encoding, CGI.',
+      desc: 'An HTTP/1.1 server written in C++ without external libraries. It uses poll() or select() for concurrent connections and supports GET, POST, DELETE, chunked encoding, and CGI.',
       Demo: WebservGame, badge: '🌐 HTTP REQUESTS', accent: '#00d4ff',
       repo: `${GH}/webserv`,
     },
     {
-      id: 'push', num: '06', name: 'Push_swap', type: 'Algorithms · C · Sorting',
+      id: 'push', num: '06', name: 'Push_swap', type: 'Algorithms / C / Sorting',
       tags: ['C','Radix Sort','Stack Operations','Algorithm Optimization'],
-      desc: 'Sorts integers using two stacks with a limited instruction set — push, swap, rotate. Implements radix sort achieving O(n log n). Watch every operation step by step in real time.',
+      desc: 'Sorts integers across two stacks using only push, swap, and rotate operations. The visualizer shows each radix-sort operation as it runs.',
       Demo: PushSwapGame, badge: '📊 SORT VISUALIZER', accent: '#7ec8e3',
       repo: `${GH}/push_swap`,
     },
     {
-      id: 'solong', num: '07', name: 'so_long', type: 'Graphics · C · MinilibX · Game Dev',
+      id: 'solong', num: '07', name: 'so_long', type: 'Graphics / C / MinilibX / Game Dev',
       tags: ['C','MinilibX','2D Graphics','Game Loop','Map Parsing'],
       desc: '2D tile-based game in C using MinilibX. Collect all coins then reach the exit. Custom map parsing, sprite rendering, keyboard event loop. Playable right here.',
       Demo: SoLongGame, badge: '🕹 PLAY NOW', accent: '#00d4ff',
       repo: `${GH}/so_long`,
     },
     {
-      id: 'cub3d', num: '08', name: 'cub3D', type: 'Graphics · C · Raycasting',
+      id: 'cub3d', num: '08', name: 'cub3D', type: 'Graphics / C / Raycasting',
       tags: ['C','Raycasting','MinilibX','3D Math','OpenGL concepts'],
-      desc: '3D raycasting engine from scratch in C — Wolfenstein 3D style. Pseudo-3D first-person view from a 2D map. Camera-plane DDA, minimap, smooth movement. Playable right here.',
+      desc: 'A C raycasting engine inspired by early first-person games. It renders a 3D view from a 2D map using camera-plane DDA, with a minimap and smooth movement.',
       Demo: Cub3DGame, badge: '🎲 3D RAYCASTER', accent: '#5ab4d6',
       repo: `${GH}/cub3d`,
     },
     {
-      id: 'net', num: '09', name: 'NetPractice', type: 'Networking · TCP/IP · Subnetting',
+      id: 'net', num: '09', name: 'NetPractice', type: 'Networking / TCP/IP / Subnetting',
       tags: ['TCP/IP','Subnetting','CIDR','Routing','IPv4'],
       desc: 'Mastered TCP/IP through 10 levels of progressively complex network configuration. Covers subnetting, CIDR notation, routing tables, troubleshooting. Interactive calculator below.',
       Demo: NetPracticeGame, badge: '🌐 SUBNET CALC', accent: '#00d4ff',
       repo: null,
     },
     {
-      id: 'core', num: '10', name: 'Core 42 Projects', type: 'C · C++ · Systems',
+      id: 'core', num: '10', name: 'Core 42 Projects', type: 'C / C++ / Systems',
       tags: ['C','C++','Libft','ft_printf','Get_Next_Line','Born2beroot','OOP','STL'],
-      desc: 'Libft (custom libc), ft_printf (variadic output engine), Get_Next_Line (buffered fd reader), Born2beroot (Linux VM hardening), CPP Modules 00–09 — OOP, templates, STL, polymorphism, exceptions.',
+      desc: 'Libft, ft_printf, Get_Next_Line, Born2beroot, and C++ Modules 00 through 09. The work covers buffered I/O, Linux hardening, OOP, templates, STL, polymorphism, and exceptions.',
       Demo: null, badge: null, accent: '#4a6480',
       repo: null,
       coreRepos: [
@@ -325,7 +330,7 @@ export default function Projects() {
   ];
 
   return (
-    <section id="projects" style={{ padding: '120px 0', background: 'transparent', zIndex: 2 }}>
+    <section id="projects" className="projects-section" style={{ padding: '120px 0', background: 'transparent', zIndex: 2 }}>
       <InjectCSS />
       <div style={{ padding: '0 24px' }}>
 
@@ -343,11 +348,11 @@ export default function Projects() {
             const hasDemo    = proj.Demo && proj.Demo !== Empty;
             const hasGallery = !!proj.Gallery;
             const isEven     = idx % 2 === 0;
-            const isActive   = visibleId === proj.id;
+            const isActive   = visibleIds.has(proj.id);
 
             return (
               <div key={proj.id} ref={el => cardRefs.current[proj.id] = el}
-                className="reveal"
+                className="project-card reveal"
                 style={{
                   transitionDelay: `${idx * 80}ms`,
                   display: 'grid',
@@ -361,7 +366,7 @@ export default function Projects() {
 
                 {/* Left demo (odd rows) */}
                 {!isEven && (hasDemo || hasGallery) && (
-                  <div style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
+                  <div className="project-demo" style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${proj.accent}06 0%,transparent 70%)`, pointerEvents:'none' }}/>
                     <div style={{ width:'100%', maxWidth:560 }}>
                       {hasGallery && <proj.Gallery />}
@@ -371,7 +376,7 @@ export default function Projects() {
                 )}
 
                 {/* Info column */}
-                <div style={{ padding:'48px 40px', background:'rgba(8,14,26,0.72)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                <div className="project-info" style={{ padding:'48px 40px', background:'rgba(8,14,26,0.72)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
                     <span style={{ fontFamily:'var(--mono)', fontSize:11, color:proj.accent, opacity:.6, letterSpacing:2 }}>{proj.num}</span>
                     {proj.badge && (
@@ -383,10 +388,10 @@ export default function Projects() {
                   <h3 style={{ fontFamily:'var(--display)', fontSize:'clamp(22px,3vw,34px)', fontWeight:800, letterSpacing:-1, color:'#f0f6ff', marginBottom:8, lineHeight:1.1 }}>
                     {proj.name}
                   </h3>
-                  <div style={{ fontFamily:'var(--mono)', fontSize:11, color:'#6a90b0', letterSpacing:1, marginBottom:18, textTransform:'uppercase' }}>
+                  <div className="project-type" style={{ fontFamily:'var(--mono)', fontSize:11, color:'#6a90b0', letterSpacing:1, marginBottom:18, textTransform:'uppercase' }}>
                     {proj.type}
                   </div>
-                  <p style={{ fontSize:17, lineHeight:1.88, color:'#a8c4dc', marginBottom:24, maxWidth:480 }}>
+                  <p className="project-description" style={{ fontSize:17, lineHeight:1.88, color:'#a8c4dc', marginBottom:24, maxWidth:480 }}>
                     {proj.desc}
                   </p>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
@@ -408,7 +413,7 @@ export default function Projects() {
 
                 {/* Right demo (even rows) */}
                 {isEven && (hasDemo || hasGallery) && (
-                  <div style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
+                  <div className="project-demo" style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${proj.accent}06 0%,transparent 70%)`, pointerEvents:'none' }}/>
                     <div style={{ width:'100%', maxWidth:560 }}>
                       {hasGallery && <proj.Gallery />}

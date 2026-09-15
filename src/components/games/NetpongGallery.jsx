@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ZombieLandGame from './ZombieLandGame';
 
 const FIXED_HEIGHT = 420;
@@ -6,7 +6,7 @@ const FIXED_HEIGHT = 420;
 /* ─── HOME ─────────────────────────────────────────────────────────── */
 function MockHome() {
   return (
-    <div style={{ height: FIXED_HEIGHT, background: 'linear-gradient(135deg,#0d0a1e 0%,#1a1035 50%,#0d0a1e 100%)', borderRadius: 10, overflow: 'hidden', fontFamily: 'var(--sans)', border: '1px solid #2a1f50', position: 'relative' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: 'linear-gradient(135deg,#0d0a1e 0%,#1a1035 50%,#0d0a1e 100%)', borderRadius: 10, overflow: 'hidden', fontFamily: 'var(--sans)', border: '1px solid #2a1f50', position: 'relative' }}>
       <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")', pointerEvents: 'none', opacity: .4 }} />
       {/* Nav */}
       <div style={{ background: 'rgba(10,6,25,.9)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a1f50' }}>
@@ -40,7 +40,7 @@ function MockHome() {
       <div style={{ margin: '0 20px 16px', background: 'rgba(20,12,40,.5)', border: '1px solid #2a1f40', borderRadius: 10, padding: '14px 18px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#888', marginBottom: 8 }}>
           <span style={{ color: '#aaa', fontWeight: 600 }}>XP Progress</span>
-          <span style={{ color: '#aaa' }}>128 / 200 XP · 64%</span>
+          <span style={{ color: '#aaa' }}>128 / 200 XP, 64%</span>
         </div>
         <div style={{ background: '#1a0a30', borderRadius: 20, height: 10, overflow: 'hidden' }}>
           <div style={{ width: '64%', height: '100%', background: 'linear-gradient(90deg,#ff6600,#ff3b3b)', borderRadius: 20, boxShadow: '0 0 10px #ff660088' }} />
@@ -70,7 +70,7 @@ function MockHome() {
 /* ─── EXCLUSIVE ─────────────────────────────────────────────────────── */
 function MockExclusive() {
   return (
-    <div style={{ height: FIXED_HEIGHT, background: 'linear-gradient(180deg,#0a0820 0%,#140d35 40%,#0a0820 100%)', borderRadius: 10, overflow: 'hidden', fontFamily: 'var(--sans)', border: '1px solid #2a1f50', display: 'flex', flexDirection: 'column' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: 'linear-gradient(180deg,#0a0820 0%,#140d35 40%,#0a0820 100%)', borderRadius: 10, overflow: 'hidden', fontFamily: 'var(--sans)', border: '1px solid #2a1f50', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'rgba(10,6,25,.9)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a1f50', flexShrink: 0 }}>
         <span style={{ color: '#ff3b3b', fontWeight: 900, fontSize: 16 }}>NETPONG</span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -81,7 +81,7 @@ function MockExclusive() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', textAlign: 'center', gap: 0 }}>
         <div style={{ display: 'inline-block', background: 'linear-gradient(90deg,#ff6600,#a855f7)', borderRadius: 20, padding: '4px 16px', fontSize: 10, color: '#fff', fontWeight: 700, marginBottom: 14 }}>EXCLUSIVE ACCESS</div>
         <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1.1, marginBottom: 6 }}>COMPETE & DOMINATE</div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#ff3b3b', letterSpacing: 2, marginBottom: 4 }}>NETPONG — EXCLUSIVE COMPETITIVE FEATURES</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#ff3b3b', letterSpacing: 2, marginBottom: 4 }}>NETPONG COMPETITIVE FEATURES</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#a855f7', letterSpacing: 1, marginBottom: 16 }}>PROVE YOUR SKILLS</div>
         <div style={{ fontSize: 11, color: '#666', maxWidth: 460, lineHeight: 1.7, marginBottom: 24 }}>Join intense tournaments, compete against the best players worldwide, and climb the leaderboards. Show everyone what you're made of!</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 520, marginBottom: 18 }}>
@@ -117,7 +117,7 @@ function MockGameModes() {
     { id: 3, icon: '🃏', name: 'Joker', desc: 'Face the ultimate psychopath in a twisted game. Claim the crown and become the new game maker.', tags: ['Twisted Game','Chaos Reigns','Crown Awaits'], genre: 'Psycho', bg: 'linear-gradient(135deg,#2a0808,#3a1010)', border: '#601818', glow: '#ff4444', textColor: '#fff' },
   ];
   return (
-    <div style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'rgba(8,12,24,.95)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a2030', flexShrink: 0 }}>
         <span style={{ color: '#ff3b3b', fontWeight: 900, fontSize: 16 }}>NETPONG</span>
         <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#ccc' }}><span>Home</span><span>Exclusive</span><span style={{ color: '#fff', fontWeight: 600 }}>Game Modes ▾</span><span>Contact</span></div>
@@ -162,7 +162,7 @@ function MockLeaderboard() {
   ];
   const tierColor = { Diamond: '#00bfff', Platinum: '#aaaaee', Gold: '#ffc142', Silver: '#aaaaaa', Bronze: '#cc8844' };
   return (
-    <div style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'rgba(8,12,24,.95)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a2030', flexShrink: 0 }}>
         <span style={{ color: '#ff3b3b', fontWeight: 900, fontSize: 16 }}>NETPONG</span>
         <span style={{ fontSize: 11, color: '#666' }}>netpong.games/leaderboard</span>
@@ -236,7 +236,7 @@ function MockHistory() {
     { opp:'Mohammed', mode:'🃏 Joker',    score:'7:4', result:'VICTORY', xp:'+100',date:'Feb 22, 02:20 PM' },
   ];
   return (
-    <div style={{ height: FIXED_HEIGHT, background: 'linear-gradient(180deg,#1a0a10 0%,#0e0816 50%,#080612 100%)', borderRadius: 10, overflow: 'hidden', border: '1px solid #2a1520', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: 'linear-gradient(180deg,#1a0a10 0%,#0e0816 50%,#080612 100%)', borderRadius: 10, overflow: 'hidden', border: '1px solid #2a1520', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'rgba(10,6,18,.95)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2a1520', flexShrink: 0 }}>
         <span style={{ color: '#ff3b3b', fontWeight: 900, fontSize: 16 }}>NETPONG</span>
         <span style={{ fontSize: 11, color: '#666' }}>netpong.games/history</span>
@@ -321,7 +321,7 @@ function MockChat() {
   ]);
   const send = () => { if (!input.trim()) return; setMsgs(m => [...m, { id: Date.now(), user: 'hdrahm', text: input, own: true, color: '#ff5533', time: 'now' }]); setInput(''); };
   return (
-    <div style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: '#080e18', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a2030', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: 'rgba(8,12,24,.95)', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1a2030', flexShrink: 0 }}>
         <span style={{ color: '#ff3b3b', fontWeight: 900, fontSize: 15 }}>NETPONG</span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -334,7 +334,7 @@ function MockChat() {
         {/* Sidebar */}
         <div style={{ width: 160, background: 'rgba(6,10,18,.8)', borderRight: '1px solid #1a2030', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '12px 12px 4px', fontSize: 13, fontWeight: 700, color: '#fff' }}>Friends</div>
-          <div style={{ fontSize: 9, color: '#444', paddingLeft: 12, marginBottom: 10 }}>2 friends · 0 online</div>
+          <div style={{ fontSize: 9, color: '#444', paddingLeft: 12, marginBottom: 10 }}>2 friends, 0 online</div>
           <div style={{ padding: '0 8px', marginBottom: 8 }}>
             <div style={{ background: '#141c2a', border: '2px solid #ff5533', borderRadius: 10, padding: '9px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#ff5533', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900, color: '#fff', flexShrink: 0 }}>G</div>
@@ -362,7 +362,7 @@ function MockChat() {
               <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: m.own ? 'flex-end' : 'flex-start' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   {!m.own && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#2a3a4a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#aaa' }}>{m.user[0].toUpperCase()}</div>}
-                  <span style={{ fontSize: 9, color: '#444' }}>{m.user} · {m.time}</span>
+                  <span style={{ fontSize: 9, color: '#444' }}>{m.user}, {m.time}</span>
                 </div>
                 <div style={{ background: m.own ? m.color : 'rgba(255,255,255,.05)', border: m.own ? 'none' : '1px solid rgba(255,255,255,.08)', borderRadius: m.own ? '14px 14px 3px 14px' : '14px 14px 14px 3px', padding: '8px 13px', maxWidth: '75%', fontSize: 11, color: '#fff', lineHeight: 1.5 }}>{m.text}</div>
                 {!m.own && <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>{['😂 1','😮 1'].map(r => <span key={r} style={{ background: 'rgba(255,255,255,.06)', borderRadius: 20, padding: '2px 7px', fontSize: 9, color: '#888' }}>{r}</span>)}</div>}
@@ -399,7 +399,7 @@ function MockChat() {
 /* ─── LOGIN ─────────────────────────────────────────────────────────── */
 function MockLogin() {
   return (
-    <div style={{ height: FIXED_HEIGHT, background: '#050508', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a1a2a', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: '#050508', borderRadius: 10, overflow: 'hidden', border: '1px solid #1a1a2a', fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
         <div style={{ width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(120,60,255,.15),transparent 70%)' }} />
       </div>
@@ -448,7 +448,7 @@ function MockLogin() {
 /* ─── GAME MODE SPLASH (reusable) ───────────────────────────────────── */
 function ModeSplash({ title, subtitle, tagline, color1, color2, textColor, btnColor, btnText, bg, words }) {
   return (
-    <div style={{ height: FIXED_HEIGHT, background: bg, borderRadius: 10, overflow: 'hidden', border: `1px solid ${color1}22`, fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <div className="netpong-screen" style={{ height: FIXED_HEIGHT, background: bg, borderRadius: 10, overflow: 'hidden', border: `1px solid ${color1}22`, fontFamily: 'var(--sans)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
       {words && words.map((w, i) => (
         <div key={i} style={{ position: 'absolute', ...w.pos, fontWeight: 900, fontSize: w.size || 14, color: w.color || color1, opacity: .35, letterSpacing: 1, userSelect: 'none', pointerEvents: 'none' }}>{w.text}</div>
       ))}
@@ -489,12 +489,25 @@ const SCREENS = [
 /* ─── MAIN EXPORT ───────────────────────────────────────────────────── */
 export default function NetpongGallery() {
   const [cur, setCur] = useState(0);
+  const [stageWidth, setStageWidth] = useState(560);
+  const stageRef = useRef(null);
   const screen = SCREENS[cur];
+  const scale = screen.isGame ? 1 : Math.min(1, stageWidth / 560);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const updateWidth = () => setStageWidth(stage.clientWidth || 560);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="netpong-gallery" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div className="netpong-tabs" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {SCREENS.map((s, i) => (
           <div key={s.id} data-h onClick={() => setCur(i)}
             style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '5px 11px', cursor: 'none', border: `1px solid ${cur === i ? s.accent + '88' : 'var(--border)'}`, background: cur === i ? `${s.accent}14` : 'transparent', color: cur === i ? s.accent : 'var(--text3)', borderRadius: 4, transition: 'all .2s', letterSpacing: .5, whiteSpace: 'nowrap' }}
@@ -509,13 +522,24 @@ export default function NetpongGallery() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 6px #00ff88', animation: 'pulse 1.5s infinite' }} />
         <span style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text3)', letterSpacing: 2 }}>
-          {screen.isGame ? 'PLAYABLE DEMO · NETPONG.GAMES' : 'LIVE INTERACTIVE MOCK · NETPONG.GAMES'}
+          {screen.isGame ? 'PLAYABLE DEMO / NETPONG.GAMES' : 'INTERACTIVE SHOWCASE / NETPONG.GAMES'}
         </span>
       </div>
 
       {/* Fixed-height content area */}
-      <div style={{ height: FIXED_HEIGHT }} key={screen.id}>
-        <div style={{ animation: 'fadeUp .22s ease', height: '100%' }}>
+      <div
+        ref={stageRef}
+        className={`netpong-stage${screen.isGame ? ' netpong-game-stage' : ''}`}
+        style={{ height: screen.isGame ? FIXED_HEIGHT : FIXED_HEIGHT * scale }}
+        key={screen.id}
+      >
+        <div className="netpong-render" style={{
+          animation: 'fadeUp .22s ease',
+          height: FIXED_HEIGHT,
+          width: screen.isGame || scale === 1 ? '100%' : 560,
+          transform: scale === 1 ? 'none' : `scale(${scale})`,
+          transformOrigin: 'top left',
+        }}>
           {screen.isGame
             ? <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#020c06', borderRadius: 10, border: '1px solid #0d2e14' }}><ZombieLandGame active={true} /></div>
             : <screen.Component />}

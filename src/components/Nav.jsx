@@ -16,7 +16,7 @@ export default function Nav() {
   };
 
   return (
-    <nav style={{
+    <nav className="site-nav" style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
       backdropFilter: 'blur(28px)',
       background: sc ? 'rgba(4,7,18,.78)' : 'rgba(4,7,18,.18)',
@@ -24,13 +24,13 @@ export default function Nav() {
       transition: 'all .4s',
       boxShadow: sc ? '0 4px 40px rgba(0,100,255,0.08)' : 'none',
     }}>
-      <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: '#00d4ff', letterSpacing: 2 }}>
+      <div className="site-nav-inner" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="nav-brand" style={{ fontFamily: 'var(--mono)', fontSize: 12, color: '#00d4ff', letterSpacing: 2 }}>
           <span style={{ color: 'var(--text2)' }}>~/</span>houdaifa
         </div>
-        <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+        <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
           {[['skills','01'],['projects','02'],['about','03'],['contact','04']].map(([id, n]) => (
-            <button key={id} data-h onClick={() => rafScrollTo(id)}
+            <button className={`nav-link nav-link-${id}`} key={id} data-h onClick={() => rafScrollTo(id)}
               style={{
                 fontFamily: 'var(--mono)', fontSize: 11,
                 color: '#8bacc8',
@@ -41,13 +41,14 @@ export default function Nav() {
               }}
               onMouseEnter={e => e.currentTarget.style.color = '#00d4ff'}
               onMouseLeave={e => e.currentTarget.style.color = '#8bacc8'}>
-              {n} {id}
+              <span className="nav-number">{n}</span> {id}
             </button>
           ))}
 
           {/* CV download button — special */}
           <button
             data-h
+            className="nav-resume"
             onClick={openCV}
             style={{
               fontFamily: 'var(--mono)', fontSize: 11,

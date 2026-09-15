@@ -2,34 +2,33 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import TouchControls from '../TouchControls';
 
 const btnStyle = { fontFamily: 'var(--mono)', fontSize: 12, width: 32, height: 32, background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: 'pointer', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const GRID = [
+  '11111111111',
+  '1P000000001',
+  '10110010001',
+  '10000C00001',
+  '10101010001',
+  '10000000CE1',
+  '11111111111',
+];
+
+function createInitialState() {
+  let px = 1, py = 1, coins = [];
+  GRID.forEach((row, y) => row.split('').forEach((c, x) => {
+    if (c === 'P') { px = x; py = y; }
+    if (c === 'C') coins.push({ x, y, got: false });
+  }));
+  return { px, py, coins, moves: 0, won: false };
+}
 
 export default function SoLongGame({ active }) {
-  const GRID = [
-    '11111111111',
-    '1P000000001',
-    '10110010001',
-    '10000C00001',
-    '10101010001',
-    '10000000CE1',
-    '11111111111',
-  ];
-
-  const initState = () => {
-    let px = 1, py = 1, coins = [];
-    GRID.forEach((row, y) => row.split('').forEach((c, x) => {
-      if (c === 'P') { px = x; py = y; }
-      if (c === 'C') coins.push({ x, y, got: false });
-    }));
-    return { px, py, coins, moves: 0, won: false };
-  };
-
-  const [state, setState] = useState(initState);
+  const [state, setState] = useState(createInitialState);
   const [touchDir, setTouchDir] = useState({ up: false, down: false, left: false, right: false });
   const moveIntervalRef = useRef(null);
-  const isTouch = 'ontouchstart' in window;
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
   useEffect(() => {
-    if (!active) setState(initState());
+    if (!active) setState(createInitialState());
   }, [active]);
 
   const move = useCallback((dx, dy) => {
@@ -55,7 +54,7 @@ export default function SoLongGame({ active }) {
     }, 150);
     moveIntervalRef.current = interval;
     return () => clearInterval(interval);
-  }, [touchDir, move]);
+  }, [touchDir, move, isTouch]);
 
   const handleTouchMove = useCallback((dirs) => {
     setTouchDir(dirs);
@@ -79,11 +78,11 @@ export default function SoLongGame({ active }) {
   const CW = 36;
 
   return (
-    <div ref={soLongRef} tabIndex={0} onKeyDown={handleSoLongKey} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none' }}>
+    <div className="so-long-game" ref={soLongRef} tabIndex={0} onKeyDown={handleSoLongKey} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, outline: 'none', width: '100%' }}>
       <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
-        Moves: {state.moves} · Coins: {state.coins.filter(c => c.got).length}/{state.coins.length} · {allCoins ? 'Find the exit E!' : 'Collect all coins first'}
+        Moves: {state.moves} / Coins: {state.coins.filter(c => c.got).length}/{state.coins.length} / {allCoins ? 'Find the exit E!' : 'Collect all coins first'}
       </div>
-      <div style={{ border: '2px solid var(--border)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 0 24px rgba(0,212,255,.1)' }}>
+      <div className="so-long-board" style={{ border: '2px solid var(--border)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 0 24px rgba(0,212,255,.1)' }}>
         {GRID.map((row, y) => (
           <div key={y} style={{ display: 'flex' }}>
             {row.split('').map((cell, x) => {
@@ -91,7 +90,7 @@ export default function SoLongGame({ active }) {
               const coinHere = state.coins.find(c => c.x === x && c.y === y);
               const bg = cell === '1' ? '#0d1520' : cell === 'E' && allCoins ? 'rgba(0,255,136,.25)' : '#07090e';
               return (
-                <div key={x} style={{ width: CW, height: CW, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: cell === 'E' && allCoins ? '1px solid #00ff8855' : 'none', transition: 'background .3s' }}>
+                <div className="so-long-cell" key={x} style={{ width: CW, height: CW, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: cell === 'E' && allCoins ? '1px solid #00ff8855' : 'none', transition: 'background .3s' }}>
                   {isPlayer ? '🧑'
                     : cell === '1' ? <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#1e2d40,#0f1622)' }} />
                     : cell === 'E' ? <span style={{ fontSize: 14, opacity: allCoins ? 1 : .3, transition: 'opacity .3s' }}>🚪</span>
@@ -114,12 +113,12 @@ export default function SoLongGame({ active }) {
             <button data-h onClick={() => move(0, 1)} style={btnStyle}>↓</button>
             <button data-h onClick={() => move(1, 0)} style={btnStyle}>→</button>
           </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text3)', letterSpacing: 1, marginTop: 2 }}>Click game · WASD / ARROW KEYS</div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 8, color: 'var(--text3)', letterSpacing: 1, marginTop: 2 }}>Click the game, then use WASD or arrow keys</div>
         </div>
       )}
       {isTouch && <TouchControls onMove={handleTouchMove} />}
       {state.won && (
-        <button data-h onClick={() => setState(initState())} style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '5px 16px', background: 'rgba(0,255,136,.12)', border: '1px solid #00ff88', color: '#00ff88', cursor: 'pointer', borderRadius: 3 }}>▶ PLAY AGAIN</button>
+        <button data-h onClick={() => setState(createInitialState())} style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '5px 16px', background: 'rgba(0,255,136,.12)', border: '1px solid #00ff88', color: '#00ff88', cursor: 'pointer', borderRadius: 3 }}>▶ PLAY AGAIN</button>
       )}
     </div>
   );

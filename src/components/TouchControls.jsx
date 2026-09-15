@@ -4,74 +4,65 @@ export default function TouchControls({ onMove }) {
   const activeRef = useRef({ up: false, down: false, left: false, right: false });
 
   useEffect(() => {
-    const handleTouchEnd = (e) => {
-      e.preventDefault();
-      const touches = e.touches;
-      const stillActive = { up: false, down: false, left: false, right: false };
-      for (let i = 0; i < touches.length; i++) {
-        const touch = touches[i];
-        const dir = touch.target?.getAttribute('data-dir');
-        if (dir) stillActive[dir] = true;
-      }
-      activeRef.current = stillActive;
-      onMove(stillActive);
-    };
-
-    const handleTouchCancel = (e) => {
-      e.preventDefault();
+    const releaseAll = () => {
       activeRef.current = { up: false, down: false, left: false, right: false };
       onMove(activeRef.current);
     };
-
-    document.addEventListener('touchend', handleTouchEnd, { passive: false });
-    document.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+    window.addEventListener('pointerup', releaseAll);
+    window.addEventListener('pointercancel', releaseAll);
+    window.addEventListener('blur', releaseAll);
     return () => {
-      document.removeEventListener('touchend', handleTouchEnd);
-      document.removeEventListener('touchcancel', handleTouchCancel);
+      window.removeEventListener('pointerup', releaseAll);
+      window.removeEventListener('pointercancel', releaseAll);
+      window.removeEventListener('blur', releaseAll);
     };
   }, [onMove]);
 
-  const handleTouchStart = (dir) => (e) => {
+  const press = (dir) => (e) => {
     e.preventDefault();
-    activeRef.current[dir] = true;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    activeRef.current = { ...activeRef.current, [dir]: true };
+    onMove(activeRef.current);
+  };
+
+  const release = (dir) => (e) => {
+    e.preventDefault();
+    activeRef.current = { ...activeRef.current, [dir]: false };
     onMove(activeRef.current);
   };
 
   const buttonStyle = {
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
     background: 'rgba(0,212,255,0.2)',
     border: '2px solid #00d4ff',
     color: '#00d4ff',
-    fontSize: '24px',
+    fontSize: '20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     userSelect: 'none',
     touchAction: 'manipulation',
     cursor: 'pointer',
+    WebkitTapHighlightColor: 'transparent',
   };
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: 20,
-      left: 0,
-      right: 0,
+    <div className="touch-controls" aria-label="Game movement controls" style={{
       display: 'flex',
       justifyContent: 'center',
-      gap: 20,
+      marginTop: 12,
       pointerEvents: 'auto',
       zIndex: 10,
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 48px)', gap: 7 }}>
         <div></div>
-        <button data-dir="up" style={buttonStyle} onTouchStart={handleTouchStart('up')}>↑</button>
+        <button type="button" aria-label="Move forward" data-dir="up" style={buttonStyle} onPointerDown={press('up')} onPointerUp={release('up')} onPointerCancel={release('up')}>↑</button>
         <div></div>
-        <button data-dir="left" style={buttonStyle} onTouchStart={handleTouchStart('left')}>←</button>
-        <button data-dir="down" style={buttonStyle} onTouchStart={handleTouchStart('down')}>↓</button>
-        <button data-dir="right" style={buttonStyle} onTouchStart={handleTouchStart('right')}>→</button>
+        <button type="button" aria-label="Turn left" data-dir="left" style={buttonStyle} onPointerDown={press('left')} onPointerUp={release('left')} onPointerCancel={release('left')}>←</button>
+        <button type="button" aria-label="Move backward" data-dir="down" style={buttonStyle} onPointerDown={press('down')} onPointerUp={release('down')} onPointerCancel={release('down')}>↓</button>
+        <button type="button" aria-label="Turn right" data-dir="right" style={buttonStyle} onPointerDown={press('right')} onPointerUp={release('right')} onPointerCancel={release('right')}>→</button>
       </div>
     </div>
   );

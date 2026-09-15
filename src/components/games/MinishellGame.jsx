@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 export default function MinishellGame({ active }) {
-  const initHistory = [
+  const initHistory = useMemo(() => [
     { t: 'sys', v: '╭──────────────────────────────────────────╮' },
-    { t: 'sys', v: '│  Minishell v1.0  ·  built from scratch in C  │' },
+    { t: 'sys', v: '│  Minishell v1.0, built from scratch in C     │' },
     { t: 'sys', v: '╰──────────────────────────────────────────╯' },
     { t: 'sys', v: '' },
     { t: 'h', v: '┌─ Available Commands ───────────────────────┐' },
@@ -21,7 +21,7 @@ export default function MinishellGame({ active }) {
     { t: 'k', v: '│  clear           clear terminal            │' },
     { t: 'h', v: '└────────────────────────────────────────────┘' },
     { t: 'sys', v: '' },
-  ];
+  ], []);
 
   const [history, setHistory] = useState(initHistory);
   const [input, setInput] = useState('');
@@ -35,9 +35,9 @@ export default function MinishellGame({ active }) {
       setHistory(initHistory);
       setInput(''); setCmdHist([]); setHIdx(-1);
     }
-  }, [active]);
+  }, [active, initHistory]);
 
-  const CMDS = {
+  const CMDS = useMemo(() => ({
     help: [
       { t: 'h', v: '┌─ Available Commands ───────────────────────┐' },
       { t: 'k', v: '│  ls              list project directories  │' },
@@ -68,21 +68,21 @@ export default function MinishellGame({ active }) {
     ],
     pwd: [{ t: 'o', v: '  /home/houdaifa/42/projects' }],
     whoami: [
-      { t: 'g', v: '  houdaifa — Backend & DevOps Engineer' },
-      { t: 'g', v: '  @ 1337 School · UM6P · Benguerir, Morocco' },
+      { t: 'g', v: '  houdaifa, Backend & DevOps Engineer' },
+      { t: 'g', v: '  @ 1337 School, UM6P, Benguerir, Morocco' },
       { t: 'g', v: '  → houdaifa.dev' },
     ],
     skills: [
       { t: 'g', v: '  ── Languages ──────────────────────────────' },
-      { t: 'o', v: '  C · C++ · JavaScript · TypeScript · Bash' },
+      { t: 'o', v: '  C, C++, JavaScript, TypeScript, Bash' },
       { t: 'g', v: '  ── Backend ────────────────────────────────' },
-      { t: 'o', v: '  Node.js · NestJS · Socket.io · JWT' },
+      { t: 'o', v: '  Node.js, NestJS, Socket.io, JWT' },
       { t: 'g', v: '  ── DevOps ──────────────────────────────────' },
-      { t: 'o', v: '  Docker · K8s · GitHub Actions · DigitalOcean' },
+      { t: 'o', v: '  Docker, K8s, GitHub Actions, DigitalOcean' },
       { t: 'g', v: '  ── Systems ─────────────────────────────────' },
-      { t: 'o', v: '  POSIX · pthreads · Mutexes · poll()' },
+      { t: 'o', v: '  POSIX, pthreads, Mutexes, poll()' },
       { t: 'g', v: '  ── Databases ───────────────────────────────' },
-      { t: 'o', v: '  PostgreSQL · MariaDB' },
+      { t: 'o', v: '  PostgreSQL, MariaDB' },
     ],
     'git log': [
       { t: 'y', v: '  a3f9c12  feat: ft_transcendence → DO' },
@@ -109,24 +109,24 @@ export default function MinishellGame({ active }) {
       { t: 'o', v: '  PORT=3000' },
     ],
     clear: 'clear',
-  };
+  }), []);
 
-  const CAT = {
+  const CAT = useMemo(() => ({
     'resume.pdf': [
       { t: 'h', v: '  ╭─────────────────────────────────────────────╮' },
-      { t: 'h', v: '  │  HOUDAIFA DRAHM · Backend & DevOps Engineer  │' },
-      { t: 'h', v: '  │  houdaifadrahm@gmail.com · +212 644 645 877  │' },
+      { t: 'h', v: '  │  HOUDAIFA DRAHM, Backend & DevOps Engineer  │' },
+      { t: 'h', v: '  │  houdaifadrahm@gmail.com, +212 644 645 877  │' },
       { t: 'h', v: '  │  github.com/Houdaifa1                        │' },
       { t: 'h', v: '  │  linkedin.com/in/houdaifa-drahm              │' },
       { t: 'h', v: '  │  houdaifa.dev                                │' },
       { t: 'h', v: '  ╰─────────────────────────────────────────────╯' },
-      { t: 'g', v: '  ── SKILLS: C · C++ · Node.js · NestJS · Docker · K8s' },
-      { t: 'g', v: '  ── PROJECTS: ft_transcendence · webserv · inception · minishell' },
-      { t: 'g', v: '  ── SCHOOL: 1337 (42 Network) · UM6P · 2023–Present' },
+      { t: 'g', v: '  SKILLS: C, C++, Node.js, NestJS, Docker, K8s' },
+      { t: 'g', v: '  PROJECTS: ft_transcendence, webserv, inception, minishell' },
+      { t: 'g', v: '  SCHOOL: 1337 (42 Network), UM6P, since 2023' },
       { t: 'a', v: '  → Full CV: scroll to Resume section or download below' },
     ],
     'README.md': [
-      { t: 'h', v: '  # Houdaifa Drahm — 42 Network' },
+      { t: 'h', v: '  # Houdaifa Drahm, 42 Network' },
       { t: 'o', v: '  Building from scratch since day one.' },
       { t: 'o', v: '  ft_transcendence | webserv | inception' },
       { t: 'o', v: '  minishell | push_swap | so_long | cub3d' },
@@ -136,7 +136,7 @@ export default function MinishellGame({ active }) {
       { t: 'o', v: '  build:   docker-compose up --build -d' },
       { t: 'o', v: '  deploy:  gh workflow run ci.yml' },
     ],
-  };
+  }), []);
 
   const COLS = {
     sys: '#1e3348', h: '#00d4ff', k: '#5a8aaa', o: '#8fa8c0',
@@ -166,7 +166,7 @@ export default function MinishellGame({ active }) {
     }
     if (fn === 'clear') { setHistory([]); return; }
     setHistory(h => [...h, { t: 'cmd', v: c }, ...fn, { t: 'sys', v: '' }]);
-  }, []);
+  }, [CAT, CMDS]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -178,15 +178,15 @@ export default function MinishellGame({ active }) {
     if (e.key === 'ArrowUp') { e.preventDefault(); const i = Math.min(hIdx + 1, cmdHist.length - 1); setHIdx(i); setInput(cmdHist[i] || ''); }
     if (e.key === 'ArrowDown') { e.preventDefault(); const i = Math.max(hIdx - 1, -1); setHIdx(i); setInput(i === -1 ? '' : cmdHist[i] || ''); }
     if (e.key === 'Tab') { e.preventDefault(); const all = [...Object.keys(CMDS), ...Object.keys(CAT).map(f => `cat ${f}`)]; const m = all.find(c => c.startsWith(input) && c !== input); if (m) setInput(m); }
-  }, [input, hIdx, cmdHist, run]);
+  }, [input, hIdx, cmdHist, run, CAT, CMDS]);
 
   return (
-    <div
+    <div className="minishell-game"
       style={{ background: '#020508', border: '1px solid #0d2035', borderRadius: 12, overflow: 'hidden', fontFamily: 'var(--mono)', fontSize: 13, boxShadow: '0 0 0 1px rgba(0,212,255,.05),0 32px 64px rgba(0,0,0,.85)', width: '100%', maxWidth: 600 }}
       onClick={() => inputRef.current?.focus()}
     >
       {/* title bar */}
-      <div style={{ background: 'linear-gradient(90deg,#0a1520,#0c1828)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #0d2035', userSelect: 'none' }}>
+      <div className="minishell-titlebar" style={{ background: 'linear-gradient(90deg,#0a1520,#0c1828)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #0d2035', userSelect: 'none' }}>
         <div style={{ display: 'flex', gap: 7 }}>
           {['#ff5f56','#ffbd2e','#27c93f'].map(col => (
             <div key={col} style={{ width: 12, height: 12, borderRadius: '50%', background: col, boxShadow: `0 0 6px ${col}66` }} />
@@ -194,7 +194,7 @@ export default function MinishellGame({ active }) {
         </div>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <span style={{ fontSize: 11, color: '#3a6080', letterSpacing: 1 }}>houdaifa@1337</span>
-          <span style={{ color: '#1e3a55', margin: '0 6px' }}>—</span>
+          <span style={{ color: '#1e3a55', margin: '0 6px' }}>/</span>
           <span style={{ fontSize: 11, color: '#2a5070', letterSpacing: 1 }}>minishell</span>
         </div>
         <span style={{ fontSize: 10, color: '#1a3248', letterSpacing: .5 }}>bash 5.2</span>
@@ -224,7 +224,7 @@ export default function MinishellGame({ active }) {
       </div>
 
       {/* input row — fully bright, clearly interactive */}
-      <div style={{ borderTop: '1px solid #0d2035', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 4, background: '#030609' }}>
+      <div className="minishell-input" style={{ borderTop: '1px solid #0d2035', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 4, background: '#030609' }}>
         <span style={{ color: '#00d4ff',  fontSize: 11, flexShrink: 0 }}>houdaifa</span>
         <span style={{ color: '#4a6480',  fontSize: 11, flexShrink: 0 }}>@1337</span>
         <span style={{ color: '#2a4a60',  fontSize: 11, flexShrink: 0 }}>:</span>

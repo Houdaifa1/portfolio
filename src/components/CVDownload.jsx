@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const SEQ = [
   { d: 0,    t: '$ ssh houdaifa@1337.ma -i ~/.ssh/portfolio_key', c: 'cmd' },
-  { d: 560,  t: '✓  Connected · 1337 Cluster · 42 Network · Benguerir', c: 'ok' },
+  { d: 560,  t: '✓  Connected to 1337 Cluster, 42 Network, Benguerir', c: 'ok' },
   { d: 1020, t: '$ find ~/cv -name "*.pdf" -ls', c: 'cmd' },
-  { d: 1340, t: '  94K  Mar 2026  /home/houdaifa/cv/Houdaifa_Drahm_CV.pdf', c: 'file' },
+  { d: 1340, t: '  56K  Sep 2026  /home/houdaifa/cv/Houdaifa_Drahm_CV.pdf', c: 'file' },
   { d: 1740, t: '$ cat ~/cv/metadata.conf', c: 'cmd' },
   { d: 2020, t: '  name    : Houdaifa Drahm', c: 'data' },
   { d: 2180, t: '  role    : Backend & DevOps Engineer', c: 'data' },
-  { d: 2340, t: '  stack   : Node.js · NestJS · Docker · K8s · C/C++', c: 'data' },
-  { d: 2500, t: '  school  : 1337 School (42 Network) · UM6P', c: 'data' },
+  { d: 2340, t: '  stack   : Node.js, NestJS, Docker, K8s, C/C++', c: 'data' },
+  { d: 2500, t: '  school  : 1337 School (42 Network), UM6P', c: 'data' },
   { d: 2780, t: '$ git log --oneline --graph -3 ~/projects/', c: 'cmd' },
-  { d: 3060, t: '  * a1f3c2e  ft_transcendence — real-time multiplayer', c: 'git' },
-  { d: 3240, t: '  * b8d9e1f  webserv — HTTP/1.1 server, zero libraries', c: 'git' },
-  { d: 3420, t: '  * c4a7b3d  inception — multi-container Docker infra', c: 'git' },
+  { d: 3060, t: '  * a1f3c2e  ft_transcendence: real-time multiplayer', c: 'git' },
+  { d: 3240, t: '  * b8d9e1f  webserv: HTTP/1.1 server, zero libraries', c: 'git' },
+  { d: 3420, t: '  * c4a7b3d  inception: multi-container Docker infra', c: 'git' },
   { d: 3700, t: '$ cp -v ~/cv/Houdaifa_Drahm_CV.pdf /srv/export/', c: 'cmd' },
 ];
 
@@ -28,14 +28,22 @@ export default function CVDownload({ onClose }) {
   const [done, setDone]       = useState(false);
   const [visible, setVisible] = useState(false);
   const bodyRef  = useRef(null);
-  const ids      = useRef([]);
+  const close = useCallback(() => {
+    setVisible(false);
+    setTimeout(onClose, 320);
+  }, [onClose]);
 
   useEffect(() => {
+    const scheduled = [];
     const raf = requestAnimationFrame(() => setVisible(true));
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = e => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKeyDown);
 
     SEQ.forEach(({ d, t, c }) => {
       const id = setTimeout(() => setLines(prev => [...prev, { t, c }]), d);
-      ids.current.push(id);
+      scheduled.push(id);
     });
 
     const startId = setTimeout(() => {
@@ -48,7 +56,7 @@ export default function CVDownload({ onClose }) {
           clearInterval(iv);
           setTimeout(() => {
             setLines(prev => [...prev,
-              { t: '[✓] Export complete · PDF/A · 94K · 1 page', c: 'success' },
+              { t: '[✓] Export complete, PDF/A, 56K, 1 page', c: 'success' },
             ]);
             const a = document.createElement('a');
             a.href = '/Houdaifa_Drahm_CV.pdf';
@@ -60,24 +68,28 @@ export default function CVDownload({ onClose }) {
           }, 160);
         }
       }, 18);
-      ids.current.push(iv);
+      scheduled.push(iv);
     }, 3900);
-    ids.current.push(startId);
+    scheduled.push(startId);
 
     return () => {
       cancelAnimationFrame(raf);
-      ids.current.forEach(id => clearTimeout(id));
+      scheduled.forEach(id => clearTimeout(id));
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [close]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [lines, progress, done]);
 
-  const close = () => { setVisible(false); setTimeout(onClose, 320); };
-
   return (
     <div
+      className="cv-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Download résumé"
       onClick={close}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
@@ -96,7 +108,7 @@ export default function CVDownload({ onClose }) {
         pointerEvents: 'none',
       }} />
 
-      <div
+      <div className="cv-terminal"
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 660,
@@ -116,7 +128,7 @@ export default function CVDownload({ onClose }) {
         }}
       >
         {/* Title bar */}
-        <div style={{
+        <div className="cv-titlebar" style={{
           height: 44,
           background: 'rgba(6,10,22,0.98)',
           borderBottom: '1px solid rgba(0,212,255,0.09)',
@@ -144,14 +156,14 @@ export default function CVDownload({ onClose }) {
             flex: 1, textAlign: 'center',
             fontSize: 11, color: 'rgba(100,145,185,0.45)', letterSpacing: 1.5,
           }}>
-            houdaifa@1337:~ — cv_export.sh
+            houdaifa@1337:~ / cv_export.sh
           </div>
           {/* Fake traffic-light spacer on right */}
           <div style={{ width: 52 }} />
         </div>
 
         {/* Terminal body */}
-        <div
+        <div className="cv-terminal-body"
           ref={bodyRef}
           style={{
             padding: '20px 24px',
@@ -174,7 +186,7 @@ export default function CVDownload({ onClose }) {
 
           <div style={{ position: 'relative', zIndex: 1 }}>
             {lines.map((line, i) => (
-              <div
+              <div className="cv-terminal-line"
                 key={i}
                 style={{
                   fontSize: 12, lineHeight: 1.85,
@@ -248,7 +260,7 @@ export default function CVDownload({ onClose }) {
                     background: 'rgba(0,255,136,0.15)',
                     fontSize: 10,
                   }}>✓</span>
-                  Download triggered · check your downloads folder
+                  Download triggered. Check your downloads folder.
                 </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                   <a

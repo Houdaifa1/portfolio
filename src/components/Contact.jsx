@@ -7,17 +7,17 @@ export default function Contact() {
   ];
 
   return (
-    <section id="contact" style={{ padding: '120px 48px 100px', background: 'transparent', zIndex: 2 }}>
+    <section id="contact" className="contact-section" style={{ padding: '120px 48px 100px', background: 'transparent', zIndex: 2 }}>
       <div>
         <div style={{ textAlign: 'center', marginBottom: 72 }} className="reveal">
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: '#00d4ff', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 24 }}>04 · Get in touch</div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: '#00d4ff', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 24 }}>04 Get in touch</div>
           <div style={{ fontFamily: 'var(--display)', fontWeight: 800, letterSpacing: -4, lineHeight: .9, fontSize: 'clamp(56px,10vw,110px)' }}>
             <div style={{ color: '#f0f6ff' }}>LET'S</div>
             <div style={{ WebkitTextStroke: '2px rgba(240,246,255,.7)', color: 'transparent' }}>BUILD</div>
             <div style={{ background: 'linear-gradient(135deg,#00d4ff,#0055ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>TOGETHER</div>
           </div>
           <p style={{ fontSize: 17, color: '#a8c4dc', marginTop: 28, lineHeight: 1.75, margin: '28px auto 0' }}>
-            Open to Backend, DevOps & Systems Engineering roles — let's build something great.
+            Have a backend, DevOps, or systems problem? Tell me what you&apos;re building.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>

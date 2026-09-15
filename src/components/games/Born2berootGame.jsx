@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 
+const INITIAL_RULES = [
+  { id: 'ssh', label: 'SSH port 4242', desc: 'Non-standard port (not 22)', enabled: true, secure: true },
+  { id: 'root', label: 'Root SSH login', desc: 'Direct root login via SSH', enabled: false, secure: false },
+  { id: 'ufw', label: 'UFW Firewall', desc: 'Uncomplicated Firewall active', enabled: true, secure: true },
+  { id: 'pwd', label: 'Password policy', desc: 'Min 10 chars, uppercase, digit', enabled: true, secure: true },
+  { id: 'sudo', label: 'Sudo logging', desc: 'All sudo cmds logged', enabled: true, secure: true },
+  { id: 'http', label: 'Open port 80', desc: 'HTTP exposed publicly', enabled: false, secure: false },
+];
+
 export default function Born2berootGame({ active }) {
-  const initRules = [
-    { id: 'ssh', label: 'SSH port 4242', desc: 'Non-standard port (not 22)', enabled: true, secure: true },
-    { id: 'root', label: 'Root SSH login', desc: 'Direct root login via SSH', enabled: false, secure: false },
-    { id: 'ufw', label: 'UFW Firewall', desc: 'Uncomplicated Firewall active', enabled: true, secure: true },
-    { id: 'pwd', label: 'Password policy', desc: 'Min 10 chars, uppercase, digit', enabled: true, secure: true },
-    { id: 'sudo', label: 'Sudo logging', desc: 'All sudo cmds logged', enabled: true, secure: true },
-    { id: 'http', label: 'Open port 80', desc: 'HTTP exposed publicly', enabled: false, secure: false },
-  ];
-  const [rules, setRules] = useState(initRules);
+  const [rules, setRules] = useState(INITIAL_RULES);
   const [attacks, setAttacks] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [blocked, setBlocked] = useState(0);
@@ -17,7 +18,11 @@ export default function Born2berootGame({ active }) {
   const tms = useRef([]);
 
   useEffect(() => {
-    if (!active) { tms.current.forEach(clearTimeout); tms.current = []; setRules(initRules); setAttacks([]); setScanning(false); setBlocked(0); setHit(0); }
+    if (!active) { tms.current.forEach(clearTimeout); tms.current = []; setRules(INITIAL_RULES); setAttacks([]); setScanning(false); setBlocked(0); setHit(0); }
+    return () => {
+      tms.current.forEach(clearTimeout);
+      tms.current = [];
+    };
   }, [active]);
 
   const scan = () => {
@@ -44,8 +49,8 @@ export default function Born2berootGame({ active }) {
   const score = Math.max(0, 100 - hit * 18);
 
   return (
-    <div style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+    <div className="security-game" style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="security-rules" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {rules.map(r => {
           const ok = r.enabled === r.secure;
           return (

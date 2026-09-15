@@ -144,7 +144,7 @@ export default function Cub3DGame({ active }) {
   const rafRef = useRef(null);
   const [focused, setFocused] = useState(false);
 
-  const isTouch = 'ontouchstart' in window;
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
   const handleKeyDown = useCallback((e) => {
     const key = e.key;
@@ -229,7 +229,7 @@ export default function Cub3DGame({ active }) {
   }, [active, focused]);
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="cub3d-game" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
         <canvas
           ref={canvasRef}
@@ -282,8 +282,8 @@ export default function Cub3DGame({ active }) {
             </div>
           </div>
         )}
-        {isTouch && focused && <TouchControls onMove={handleTouchMove} />}
       </div>
+      {isTouch && focused && <TouchControls onMove={handleTouchMove} />}
       <div style={{
         display: 'flex',
         gap: 18,
@@ -303,9 +303,9 @@ export default function Cub3DGame({ active }) {
             <span>D / → turn right</span>
           </>
         ) : (
-          <span>Use on‑screen buttons</span>
+          <span>Use the controls below</span>
         )}
-        {focused && <span style={{ color: '#243850' }}>· tap outside to release</span>}
+        {focused && !isTouch && <span style={{ color: '#243850' }}>Click outside to release</span>}
       </div>
     </div>
   );

@@ -297,7 +297,7 @@ export default function SpaceCanvas() {
     const ctx = canvas.getContext('2d');
 
     let nebula      = buildNebula(W, H);
-    const brightStars = buildBrightStars(W, H, window.innerWidth < 768 ? 80 : 220);
+    let brightStars = buildBrightStars(W, H, window.innerWidth < 768 ? 48 : 220);
     let airPools    = buildAirglowPools(W, H);
 
     const STREAK_COLS = [
@@ -336,13 +336,16 @@ export default function SpaceCanvas() {
 
     let rafId;
     const t0 = performance.now();
-    let frameCount = 0;
     const isMobile = window.innerWidth < 768;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let lastFrame = 0;
+    let resizeTimer;
 
     function loop(now) {
-      rafId = requestAnimationFrame(loop);
-      frameCount++;
-      if (isMobile && frameCount % 2 === 0) return; // skip every other frame on mobile
+      if (!reducedMotion) rafId = requestAnimationFrame(loop);
+      if (document.hidden) return;
+      if (isMobile && now - lastFrame < 1000 / 30) return;
+      lastFrame = now;
 
       const t = (now - t0) * 0.001;
 
@@ -357,16 +360,18 @@ export default function SpaceCanvas() {
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.globalAlpha = a * 0.08;
-        const halo = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 7);
-        halo.addColorStop(0, s.col);
-        halo.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = halo;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r * 7, 0, Math.PI * 2);
-        ctx.fill();
+        if (!isMobile) {
+          ctx.globalAlpha = a * 0.08;
+          const halo = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 7);
+          halo.addColorStop(0, s.col);
+          halo.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r * 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
-        if (s.spike) {
+        if (!isMobile && s.spike) {
           ctx.lineWidth = 0.45;
           [[0, -s.spikeLen, 0, s.spikeLen], [-s.spikeLen, 0, s.spikeLen, 0]].forEach(([x1, y1, x2, y2]) => {
             const sg = ctx.createLinearGradient(s.x + x1, s.y + y1, s.x + x2, s.y + y2);
@@ -397,18 +402,22 @@ export default function SpaceCanvas() {
     rafId = requestAnimationFrame(loop);
 
     function onResize() {
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width  = W;
-      canvas.height = H;
-      nebula      = buildNebula(W, H);
-      // Note: brightStars and airPools could be rebuilt, but for simplicity we keep them.
-      // They will adjust on next loop because they use current W,H.
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
+        nebula = buildNebula(W, H);
+        brightStars = buildBrightStars(W, H, W < 768 ? 48 : 220);
+        airPools = buildAirglowPools(W, H);
+      }, 160);
     }
     window.addEventListener('resize', onResize);
 
     return () => {
       cancelAnimationFrame(rafId);
+      clearTimeout(resizeTimer);
       window.removeEventListener('resize', onResize);
     };
   }, []);

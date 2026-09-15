@@ -1,24 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+const INITIAL_CONTAINERS = [
+  { id: 'nginx', name: 'nginx:alpine', status: 'running', port: '443:443', cpu: 12, mem: 24, col: '#00ff88', icon: '🌐' },
+  { id: 'mariadb', name: 'mariadb:10.6', status: 'running', port: '3306:3306', cpu: 8, mem: 156, col: '#ffc142', icon: '🗄️' },
+  { id: 'wordpress', name: 'wordpress:latest', status: 'running', port: '80:80', cpu: 22, mem: 88, col: '#00d4ff', icon: '📝' },
+];
 
 export default function DockerGame({ active }) {
-  const initContainers = [
-    { id: 'nginx', name: 'nginx:alpine', status: 'running', port: '443:443', cpu: 12, mem: 24, col: '#00ff88', icon: '🌐' },
-    { id: 'mariadb', name: 'mariadb:10.6', status: 'running', port: '3306:3306', cpu: 8, mem: 156, col: '#ffc142', icon: '🗄️' },
-    { id: 'wordpress', name: 'wordpress:latest', status: 'running', port: '80:80', cpu: 22, mem: 88, col: '#00d4ff', icon: '📝' },
-  ];
-  const [containers, setContainers] = useState(initContainers);
+  const [containers, setContainers] = useState(INITIAL_CONTAINERS);
   const [logs, setLogs] = useState([
     { t: 0, v: '[inception] All containers healthy ✓' },
     { t: 1, v: '[nginx] TLS OK' },
     { t: 2, v: '[mariadb] Pool ready' },
     { t: 3, v: '[wordpress] Started :80' },
   ]);
+  const timers = useRef([]);
 
   useEffect(() => {
     if (!active) {
-      setContainers(initContainers);
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      setContainers(INITIAL_CONTAINERS);
       setLogs([{ t: 0, v: '[inception] All containers healthy ✓' }, { t: 1, v: '[nginx] TLS OK' }, { t: 2, v: '[mariadb] Pool ready' }, { t: 3, v: '[wordpress] Started :80' }]);
     }
+    return () => {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    };
   }, [active]);
 
   const addLog = msg => setLogs(l => [{ t: Date.now(), v: msg }, ...l.slice(0, 7)]);
@@ -31,7 +39,7 @@ export default function DockerGame({ active }) {
   const restart = id => {
     setContainers(p => p.map(x => x.id === id ? { ...x, status: 'restarting' } : x));
     addLog(`[docker] Restarting ${id}...`);
-    setTimeout(() => { setContainers(p => p.map(x => x.id === id ? { ...x, status: 'running' } : x)); addLog(`[docker] ${id} started ✓`); }, 1400);
+    timers.current.push(setTimeout(() => { setContainers(p => p.map(x => x.id === id ? { ...x, status: 'running' } : x)); addLog(`[docker] ${id} started ✓`); }, 1400));
   };
 
   useEffect(() => {
@@ -43,14 +51,14 @@ export default function DockerGame({ active }) {
   const sCol = { running: '#00ff88', stopped: '#ff3b5c', restarting: '#ffc142' };
 
   return (
-    <div style={{ width: '100%', maxWidth: 580, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="docker-game" style={{ width: '100%', maxWidth: 580, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--mono)', fontSize: 10 }}>
         <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} />
         <span style={{ color: 'var(--text2)' }}>inception_network</span>
-        <span style={{ color: 'var(--text3)' }}>· bridge · 172.18.0.0/16</span>
+        <span style={{ color: 'var(--text3)' }}>bridge / 172.18.0.0/16</span>
       </div>
       {containers.map(c => (
-        <div key={c.id} style={{ background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', borderRadius: 5, padding: '12px 16px', transition: 'border-color .3s', borderColor: c.status === 'running' ? 'var(--border2)' : 'var(--border)' }}>
+        <div className="docker-container" key={c.id} style={{ background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', borderRadius: 5, padding: '12px 16px', transition: 'border-color .3s', borderColor: c.status === 'running' ? 'var(--border2)' : 'var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 16 }}>{c.icon}</span>

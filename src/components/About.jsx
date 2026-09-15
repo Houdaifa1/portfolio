@@ -1,28 +1,28 @@
 export default function About() {
   const stats = [
     { n: '10+', l: 'Projects Built', icon: '⚡', color: '#00d4ff' },
-    { n: '1337', l: 'School · UM6P', icon: '🎓', color: '#5ab4d6' },
+    { n: '1337', l: 'School, UM6P', icon: '🎓', color: '#5ab4d6' },
     { n: '3', l: 'Human Languages', icon: '🌍', color: '#7ec8e3' },
-    { n: '∞', l: 'Coffees Consumed', icon: '☕', color: '#00d4ff' },
-    { n: '0', l: 'Bugs Left Behind', icon: '🛡️', color: '#5ab4d6' },
-    { n: '24/7', l: 'Builder Mindset', icon: '🔥', color: '#7ec8e3' },
+    { n: '2', l: 'Database Engines', icon: '🗄️', color: '#00d4ff' },
+    { n: '4', l: 'Systems Projects', icon: '⚙️', color: '#5ab4d6' },
+    { n: '1', l: 'Live Platform', icon: '🚀', color: '#7ec8e3' },
   ];
 
   return (
-    <section id="about" style={{ padding: '120px 48px', background: 'transparent', zIndex: 2 }}>
+    <section id="about" className="about-section" style={{ padding: '120px 48px', background: 'transparent', zIndex: 2 }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 60 }} className="reveal">
           <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#00d4ff', letterSpacing: 2 }}>03</span>
           <h2 style={{ fontFamily: 'var(--display)', fontSize: 'clamp(36px,5vw,64px)', fontWeight: 800, letterSpacing: -2, color: '#f0f6ff' }}>About</h2>
           <div style={{ flex: 1, maxWidth: 200, height: 1, background: 'var(--border)' }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="about-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           <div className="reveal-left">
             {[
-              <><strong style={{ color: '#f0f6ff', fontWeight: 700 }}>Backend & DevOps Engineer</strong> from Morocco, completing the engineering program at <strong style={{ color: '#00d4ff', fontWeight: 700 }}>1337 School · UM6P Benguerir</strong> — one of the most rigorous project-based engineering schools in the world.</>,
-              <>Every project I've built was written <strong style={{ color: '#f0f6ff', fontWeight: 700 }}>from scratch</strong>. No boilerplate. No tutorials. Just a problem, a blank file, and peer review. That's how 1337 works — and that's how I work.</>,
-              <>I specialize across the full stack — from <strong style={{ color: '#00d4ff', fontWeight: 700 }}>C/C++ systems & raycasting engines</strong> to <strong style={{ color: '#00d4ff', fontWeight: 700 }}>NestJS microservices</strong>, real-time WebSockets, TCP/IP networking, and cloud deployment on DigitalOcean.</>,
-              <>Open to <strong style={{ color: '#7ec8e3', fontWeight: 700 }}>Backend, DevOps, or Systems Engineering</strong> roles. Fluent in Arabic, English, and French.</>,
+              <><strong style={{ color: '#f0f6ff', fontWeight: 700 }}>Backend & DevOps Engineer</strong> from Morocco, completing the engineering program at <strong style={{ color: '#00d4ff', fontWeight: 700 }}>1337 School, UM6P Benguerir</strong>. The program is built around practical engineering projects and peer review.</>,
+              <>I like starting with a clear problem and working through the full implementation. At 1337, that means writing the code, testing it, reviewing it with peers, and being able to explain every decision.</>,
+              <>My work spans <strong style={{ color: '#00d4ff', fontWeight: 700 }}>C/C++ systems and raycasting engines</strong>, <strong style={{ color: '#00d4ff', fontWeight: 700 }}>NestJS services</strong>, WebSockets, TCP/IP networking, containers, and deployment on DigitalOcean.</>,
+              <>I am fluent in <strong style={{ color: '#7ec8e3', fontWeight: 700 }}>Arabic, English, and French</strong>, and I enjoy working with teams that care about clear code and reliable systems.</>,
             ].map((t, i) => <p key={i} style={{ fontSize: 17, lineHeight: 1.9, color: '#a8c4dc', marginBottom: 22 }}>{t}</p>)}
           </div>
           <div className="reveal-right" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, transitionDelay: '150ms' }}>

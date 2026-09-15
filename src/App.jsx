@@ -47,10 +47,10 @@ export default function App() {
       <Projects />
       <About />
       <Contact />
-      <footer style={{ borderTop: '1px solid rgba(0,180,255,0.12)', position: 'relative', zIndex: 1, background: 'rgba(4,7,14,0.5)', backdropFilter: 'blur(12px)' }}>
-        <div style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <footer className="site-footer" style={{ borderTop: '1px solid rgba(0,180,255,0.12)', position: 'relative', zIndex: 1, background: 'rgba(4,7,14,0.5)', backdropFilter: 'blur(12px)' }}>
+        <div className="site-footer-inner" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>© 2026 Houdaifa Drahm</span>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>Backend & DevOps · 1337 School · UM6P</span>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>Backend & DevOps, 1337 School, UM6P</span>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>Morocco 🇲🇦</span>
         </div>
       </footer>

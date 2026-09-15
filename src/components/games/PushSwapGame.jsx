@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+const randomStack = n => Array.from({ length: n }, (_, i) => i + 1).sort(() => Math.random() - .5);
 
 export default function PushSwapGame({ active }) {
-  const rand = n => Array.from({ length: n }, (_, i) => i + 1).sort(() => Math.random() - .5);
   const [n, setN] = useState(8);
-  const [stackA, setStackA] = useState(() => rand(8));
+  const [stackA, setStackA] = useState(() => randomStack(8));
   const [stackB, setStackB] = useState([]);
   const [ops, setOps] = useState([]);
   const [running, setRunning] = useState(false);
@@ -11,8 +12,14 @@ export default function PushSwapGame({ active }) {
   const [sorted, setSorted] = useState(false);
   const tms = useRef([]);
 
-  const reset = (size = n) => { tms.current.forEach(clearTimeout); tms.current = []; setStackA(rand(size)); setStackB([]); setOps([]); setOpCount(0); setSorted(false); setRunning(false); };
-  useEffect(() => { if (!active) reset(); }, [active]);
+  const reset = useCallback((size = n) => { tms.current.forEach(clearTimeout); tms.current = []; setStackA(randomStack(size)); setStackB([]); setOps([]); setOpCount(0); setSorted(false); setRunning(false); }, [n]);
+  useEffect(() => {
+    if (!active) reset();
+    return () => {
+      tms.current.forEach(clearTimeout);
+      tms.current = [];
+    };
+  }, [active, reset]);
 
   const sort = () => {
     if (running) return; setRunning(true); setSorted(false);
@@ -41,7 +48,7 @@ export default function PushSwapGame({ active }) {
   const maxV = Math.max(...stackA, ...stackB, 1);
 
   return (
-    <div style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="pushswap-game" style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ color: 'var(--text3)', fontSize: 8, letterSpacing: 2 }}>SIZE:</span>
         {[5, 8, 12, 16].map(s => (

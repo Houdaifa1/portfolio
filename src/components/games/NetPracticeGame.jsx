@@ -24,10 +24,10 @@ export default function NetPracticeGame({ active }) {
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="netpractice-game" style={{ width: '100%', maxWidth: 580, fontFamily: 'var(--mono)', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ background: 'rgba(3,6,12,0.78)', border: '1px solid var(--border)', borderRadius: 6, padding: '12px 14px' }}>
-        <div style={{ color: 'var(--text3)', fontSize: 8, letterSpacing: 2, marginBottom: 10 }}>SUBNET CALCULATOR — TCP/IP from scratch</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ color: 'var(--text3)', fontSize: 8, letterSpacing: 2, marginBottom: 10 }}>SUBNET CALCULATOR / TCP/IP</div>
+        <div className="netpractice-form" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <input value={ip} onChange={e => setIp(e.target.value)} placeholder="192.168.1.0"
             style={{ flex: 1, minWidth: 120, background: 'rgba(12,20,36,0.75)', border: '1px solid var(--border)', borderRadius: 3, padding: '5px 8px', color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 11, outline: 'none' }}
             onFocus={e => e.target.style.borderColor = '#00d4ff'} onBlur={e => e.target.style.borderColor = 'var(--border)'} />

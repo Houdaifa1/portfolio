@@ -34,7 +34,7 @@ export default function PhilosophersGame({ active }) {
   const N = 5, R = 90, cx = 150, cy = 150;
 
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="philosophers-game" style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
       <svg width={300} height={300}>
         <circle cx={cx} cy={cy} r={54} fill="var(--surface)" stroke="var(--border)" strokeWidth={1} />
         <text x={cx} y={cy + 5} textAnchor="middle" fill="#2e4055" fontSize={9} fontFamily="JetBrains Mono">dining table</text>
@@ -52,7 +52,7 @@ export default function PhilosophersGame({ active }) {
           </g>;
         })}
       </svg>
-      <div style={{ flex: 1, minWidth: 160 }}>
+      <div className="philosophers-status" style={{ flex: 1, minWidth: 160 }}>
         {phils.map(p => (
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--mono)', fontSize: 10, lineHeight: 2.1 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: p.state === 'eating' ? '#00ff88' : '#2e4055', boxShadow: p.state === 'eating' ? '0 0 8px #00ff88' : 'none', transition: 'all .3s', flexShrink: 0 }} />
