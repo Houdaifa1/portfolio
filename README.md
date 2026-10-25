@@ -131,4 +131,6 @@ git push
 
 **Built by [Houdaifa Drahm](https://houdaifa.dev) · 1337 School · UM6P · Morocco**
 
+[houdaifa.dev](https://houdaifa.dev) · [LinkedIn](https://www.linkedin.com/in/houdaifa-drahm) · [GitHub](https://github.com/Houdaifa1)
+
 </div>
