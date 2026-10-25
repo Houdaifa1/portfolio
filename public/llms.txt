@@ -1,0 +1,30 @@
+# Houdaifa Drahm
+
+> Houdaifa Drahm is a Backend & DevOps Engineer from Morocco, studying at 1337 School (42 Network), UM6P in Benguerir. He builds backend services, real-time applications, deployment pipelines, and low-level C/C++ projects. Name sometimes spelled Hudayfa Draham or Houdaifa Draham; usernames houdaifadrahm and Houdaifa1.
+
+## Profiles
+
+- [Portfolio](https://houdaifa.dev/): projects with live demos, about, contact
+- [LinkedIn](https://www.linkedin.com/in/houdaifa-drahm): professional profile
+- [GitHub](https://github.com/Houdaifa1): source code
+- [CV (PDF)](https://houdaifa.dev/Houdaifa_Drahm_CV.pdf): one page resume
+
+## Skills
+
+- Backend: Node.js, NestJS, REST APIs, WebSockets, Socket.io
+- DevOps: Docker, Docker Compose, GitHub Actions CI/CD, Nginx with TLS, DigitalOcean
+- Systems: C, C++, POSIX, multithreading, TCP/IP networking
+- Databases: PostgreSQL, MariaDB
+- Languages: Arabic, English, French
+
+## Projects
+
+- ft_transcendence (NETPONG): deployed multiplayer air hockey platform with NestJS, Socket.io, JWT auth and CI/CD
+- Webserv: HTTP/1.1 server in C++ with non-blocking I/O and CGI
+- Inception: multi-container Docker infrastructure with Nginx, MariaDB and WordPress
+- Minishell: Unix shell in C
+- Philosophers, Push_swap, so_long, cub3D, NetPractice and the core 42 projects
+
+## Contact
+
+- Email: houdaifadrahm@gmail.com
