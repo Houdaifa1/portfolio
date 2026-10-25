@@ -11,6 +11,7 @@ html{scroll-behavior:auto}
 body{background:#060910;color:var(--text);font-family:var(--sans);overflow-x:hidden;cursor:none}
 button,a,[role="button"]{-webkit-tap-highlight-color:transparent}
 #root{min-height:100vh;position:relative;z-index:1;background:transparent}
+.hero-wipe::before{content:'DRAHM'}
 section{background:transparent;position:relative;z-index:2}
 p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 .card{background:rgba(10,16,28,0.88);backdrop-filter:blur(12px)}

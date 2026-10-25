@@ -19,7 +19,7 @@ export default function About() {
         <div className="about-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           <div className="reveal-left">
             {[
-              <><strong style={{ color: '#f0f6ff', fontWeight: 700 }}>Backend & DevOps Engineer</strong> from Morocco, completing the engineering program at <strong style={{ color: '#00d4ff', fontWeight: 700 }}>1337 School, UM6P Benguerir</strong>. The program is built around practical engineering projects and peer review.</>,
+              <>I&apos;m <strong style={{ color: '#f0f6ff', fontWeight: 700 }}>Houdaifa Drahm</strong>, a Backend & DevOps Engineer from Morocco, completing the engineering program at <strong style={{ color: '#00d4ff', fontWeight: 700 }}>1337 School, UM6P Benguerir</strong>. The program is built around practical engineering projects and peer review.</>,
               <>I like starting with a clear problem and working through the full implementation. At 1337, that means writing the code, testing it, reviewing it with peers, and being able to explain every decision.</>,
               <>My work spans <strong style={{ color: '#00d4ff', fontWeight: 700 }}>C/C++ systems and raycasting engines</strong>, <strong style={{ color: '#00d4ff', fontWeight: 700 }}>NestJS services</strong>, WebSockets, TCP/IP networking, containers, and deployment on DigitalOcean.</>,
               <>I am fluent in <strong style={{ color: '#7ec8e3', fontWeight: 700 }}>Arabic, English, and French</strong>, and I enjoy working with teams that care about clear code and reliable systems.</>,
