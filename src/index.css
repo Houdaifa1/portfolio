@@ -21,6 +21,7 @@ button,a,[role="button"]{-webkit-tap-highlight-color:transparent}
 @keyframes type-role{from{width:0}to{width:25ch}}
 .nav-link,.nav-resume,.hero-actions a,.cv-card{text-decoration:none}
 .nav-link,.hero-actions a{display:inline-flex;align-items:center;justify-content:center;gap:.5em}
+.nav-links{gap:clamp(12px,2vw,28px)}
 .about-portrait{display:block;width:80px;height:80px;object-fit:cover;border-radius:50%;margin-bottom:24px}
 section{background:transparent;position:relative;z-index:2}
 p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
@@ -56,10 +57,75 @@ html:not(.has-custom-cursor) :is(.cursor,.cursor-ring){display:none}
 
 .site-footer-inner{gap:20px}
 
+.writing-section {
+  padding: clamp(82px, 10vw, 120px) clamp(18px, 3vw, 24px);
+}
+
+.writing-section h2 {
+  font: 800 clamp(36px, 5vw, 64px)/1.1 var(--display);
+  letter-spacing: -2px;
+  margin-bottom: clamp(28px, 5vw, 48px);
+}
+
+.writing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.writing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.writing-card h3 {
+  font: 800 clamp(22px, 3vw, 30px)/1.18 var(--display);
+  letter-spacing: -.6px;
+}
+
+.writing-card p {
+  color: #a8c4dc;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.writing-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin-top: auto;
+}
+
+.writing-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  color: var(--accent);
+  font: 500 12px var(--mono);
+  text-decoration: none;
+  border: 1px solid rgba(0,212,255,.26);
+  border-radius: 6px;
+}
+
+.writing-links a:is(:hover, :focus-visible) {
+  background: rgba(0,212,255,.1);
+  border-color: var(--accent);
+}
+
+@media(max-width:660px) {
+  .writing-grid { grid-template-columns: 1fr; }
+}
+
 @media(max-width:780px){
   html{scroll-padding-top:68px}
   .site-nav-inner{padding:12px 16px!important}
-  .nav-links{gap:4px!important}
+  .nav-links{gap:4px}
   .nav-link,.nav-resume{min-height:44px;padding:8px!important;font-size:10px!important;letter-spacing:.8px!important}
   .nav-number{display:none}
   .hero{min-height:100svh!important}
@@ -120,13 +186,23 @@ html:not(.has-custom-cursor) :is(.cursor,.cursor-ring){display:none}
   .zombie-game canvas{touch-action:none}
 }
 
-@media(max-width:520px){
+@media(max-width:560px){
   .nav-link-skills,.nav-link-about{display:none}
   .nav-brand{font-size:11px!important;letter-spacing:1px!important}
+}
+
+@media(max-width:520px){
   .skills-grid>div{padding:22px 20px!important}
   .project-demo{padding:24px 12px!important}
   .security-rules{grid-template-columns:1fr!important}
   .netpractice-game [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+}
+
+@media(max-width:430px) {
+  .site-nav-inner { padding-inline: 12px !important; }
+  .nav-brand { display: none; }
+  .nav-links { flex: 1; justify-content: space-between; }
+  .nav-link, .nav-resume { padding-inline: 5px !important; }
 }
 
 @media(prefers-reduced-motion:reduce){

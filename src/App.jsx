@@ -5,6 +5,7 @@ import Nav from './components/Nav';
 import Hero from './components/Hero';
 import Skills from './components/Skills';
 import Projects from './components/Projects';
+import Writing from './components/Writing';
 import About from './components/About';
 import Contact from './components/Contact';
 import CVDownload from './components/CVDownload';
@@ -44,6 +45,7 @@ export default function App() {
         <Hero />
         <Skills />
         <Projects />
+        <Writing />
         <About />
         <Contact />
       </main>

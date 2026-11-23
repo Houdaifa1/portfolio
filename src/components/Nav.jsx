@@ -24,8 +24,8 @@ export default function Nav() {
         <div className="nav-brand" style={{ fontFamily: 'var(--mono)', fontSize: 12, color: '#00d4ff', letterSpacing: 2 }}>
           <span style={{ color: 'var(--text2)' }}>~/</span>houdaifa
         </div>
-        <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
-          {[['skills','01'],['projects','02'],['about','03'],['contact','04']].map(([id, n]) => (
+        <div className="nav-links" style={{ display: 'flex', alignItems: 'center' }}>
+          {[['skills','01'],['projects','02'],['writing'],['about','03'],['contact','04']].map(([id, n]) => (
             <a className={`nav-link nav-link-${id}`} key={id} href={`#${id}`} data-h
               style={{
                 fontFamily: 'var(--mono)', fontSize: 11,
@@ -37,7 +37,8 @@ export default function Nav() {
               }}
               onMouseEnter={e => e.currentTarget.style.color = '#00d4ff'}
               onMouseLeave={e => e.currentTarget.style.color = '#8bacc8'}>
-              <span className="nav-number" aria-hidden="true">{n}</span> {id}
+              {n && <span className="nav-number" aria-hidden="true">{n}</span>}
+              {id}
             </a>
           ))}
 
@@ -71,7 +72,8 @@ export default function Nav() {
               e.currentTarget.querySelector('.nav-arrow').style.transform = 'translateY(0)';
             }}
           >
-            05 resume
+            <span className="nav-number" aria-hidden="true">05</span>
+            resume
             <span className="nav-arrow" style={{ fontSize: 10, transition: 'transform 0.2s ease' }}>⬇</span>
           </a>
         </div>
