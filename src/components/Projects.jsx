@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
-import MinishellGame from './games/MinishellGame';
-import DockerGame from './games/DockerGame';
-import PhilosophersGame from './games/PhilosophersGame';
-import WebservGame from './games/WebservGame';
-import PushSwapGame from './games/PushSwapGame';
-import SoLongGame from './games/SoLongGame';
-import Cub3DGame from './games/Cub3DGame';
-import NetPracticeGame from './games/NetPracticeGame';
-import NetpongGallery from './games/NetpongGallery';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 
-const Empty = () => null;
+const MinishellGame = lazy(() => import('./games/MinishellGame'));
+const DockerGame = lazy(() => import('./games/DockerGame'));
+const PhilosophersGame = lazy(() => import('./games/PhilosophersGame'));
+const WebservGame = lazy(() => import('./games/WebservGame'));
+const PushSwapGame = lazy(() => import('./games/PushSwapGame'));
+const SoLongGame = lazy(() => import('./games/SoLongGame'));
+const Cub3DGame = lazy(() => import('./games/Cub3DGame'));
+const NetPracticeGame = lazy(() => import('./games/NetPracticeGame'));
+const NetpongGallery = lazy(() => import('./games/NetpongGallery'));
 
 /* ─── Inject keyframes once into the document ────────────── */
 const CSS = `
@@ -213,12 +212,47 @@ function CorePill({ href, label, delay }) {
   );
 }
 
+function ProjectDemo({ Demo, active, accent }) {
+  const container = useRef(null);
+  const [load, setLoad] = useState(false);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver !== 'function') {
+      setLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setLoad(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '600px 0px' });
+    observer.observe(container.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={container} className="project-demo" style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${accent}06 0%,transparent 70%)`, pointerEvents:'none' }} />
+      <div style={{ width:'100%', maxWidth:560 }}>
+        {load && <Suspense fallback={null}><Demo active={active} /></Suspense>}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Projects section ───────────────────────────────────── */
 export default function Projects() {
   const [visibleIds, setVisibleIds] = useState(() => new Set());
   const cardRefs = useRef({});
 
   useEffect(() => {
+    if (typeof IntersectionObserver !== 'function') {
+      setVisibleIds(new Set(Object.keys(cardRefs.current)));
+      return;
+    }
+
     const observers = {};
     const threshold = window.innerWidth < 768 ? 0.2 : 0.45;
     Object.keys(cardRefs.current).forEach(id => {
@@ -245,7 +279,7 @@ export default function Projects() {
       id: 'trans', num: '01', name: 'ft_transcendence', type: 'Full Stack / Real Time / DevOps',
       tags: ['NestJS','TypeScript','Socket.io','JWT','Docker','GitHub Actions','DigitalOcean','PostgreSQL','React'],
       desc: 'NETPONG is a deployed multiplayer air hockey platform with four themed arenas. I worked with NestJS services, Socket.io game rooms, JWT authentication, leaderboards, live chat, and a GitHub Actions deployment pipeline.',
-      Demo: Empty, badge: '🎮 LIVE GALLERY', Gallery: NetpongGallery, accent: '#c084fc',
+      Demo: NetpongGallery, badge: '🎮 LIVE GALLERY', accent: '#c084fc',
       repo: 'https://github.com/fttranscendenceorganization/ft_transcendence',
     },
     {
@@ -345,35 +379,25 @@ export default function Projects() {
         {/* Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {projects.map((proj, idx) => {
-            const hasDemo    = proj.Demo && proj.Demo !== Empty;
-            const hasGallery = !!proj.Gallery;
-            const isEven     = idx % 2 === 0;
-            const isActive   = visibleIds.has(proj.id);
+            const isEven = idx % 2 === 0;
+            const isActive = visibleIds.has(proj.id);
+            const demo = proj.Demo && <ProjectDemo Demo={proj.Demo} active={isActive} accent={proj.accent} />;
 
             return (
-              <div key={proj.id} ref={el => cardRefs.current[proj.id] = el}
+              <article key={proj.id} ref={el => cardRefs.current[proj.id] = el}
                 className="project-card reveal"
                 style={{
                   transitionDelay: `${idx * 80}ms`,
                   display: 'grid',
-                  gridTemplateColumns: hasDemo || hasGallery
+                  gridTemplateColumns: proj.Demo
                     ? (isEven ? '1fr 1.5fr' : '1.5fr 1fr') : '1fr',
                   gap: 0, borderRadius: 14, backdropFilter: 'blur(12px)',
-                  border: `1px solid ${isActive && (hasDemo || hasGallery) ? proj.accent + '30' : 'var(--border)'}`,
+                  border: `1px solid ${isActive && proj.Demo ? proj.accent + '30' : 'var(--border)'}`,
                   overflow: 'hidden', position: 'relative',
                   transition: 'border-color .4s ease',
                 }}>
 
-                {/* Left demo (odd rows) */}
-                {!isEven && (hasDemo || hasGallery) && (
-                  <div className="project-demo" style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${proj.accent}06 0%,transparent 70%)`, pointerEvents:'none' }}/>
-                    <div style={{ width:'100%', maxWidth:560 }}>
-                      {hasGallery && <proj.Gallery />}
-                      {hasDemo    && <proj.Demo active={isActive} />}
-                    </div>
-                  </div>
-                )}
+                {!isEven && demo}
 
                 {/* Info column */}
                 <div className="project-info" style={{ padding:'48px 40px', background:'rgba(8,14,26,0.72)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
@@ -411,19 +435,8 @@ export default function Projects() {
                   )}
                 </div>
 
-                {/* Right demo (even rows) */}
-                {isEven && (hasDemo || hasGallery) && (
-                  <div className="project-demo" style={{ background:'rgba(6,10,20,0.72)', padding:'48px 40px', display:'flex', alignItems:'center', justifyContent:'center', minHeight:320, position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', inset:0, background:`radial-gradient(ellipse at center,${proj.accent}06 0%,transparent 70%)`, pointerEvents:'none' }}/>
-                    <div style={{ width:'100%', maxWidth:560 }}>
-                      {hasGallery && <proj.Gallery />}
-                      {hasDemo    && <proj.Demo active={isActive} />}
-                    </div>
-                  </div>
-                )}
-
-                {!hasDemo && !hasGallery && <div />}
-              </div>
+                {isEven && demo}
+              </article>
             );
           })}
         </div>

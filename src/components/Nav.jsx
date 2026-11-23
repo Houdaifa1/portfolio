@@ -1,19 +1,15 @@
 import { useState, useEffect } from 'react';
-import { rafScrollTo } from '../utils/scroll';
+import { openResume, resumeHref } from '../utils/resume';
 
 export default function Nav() {
   const [sc, setSc] = useState(false);
 
   useEffect(() => {
     const f = () => setSc(window.scrollY > 50);
-    window.addEventListener('scroll', f);
+    f();
+    window.addEventListener('scroll', f, { passive: true });
     return () => window.removeEventListener('scroll', f);
   }, []);
-
-  const openCV = (e) => {
-    e.stopPropagation();
-    window.dispatchEvent(new CustomEvent('open-cv-download'));
-  };
 
   return (
     <nav className="site-nav" style={{
@@ -30,7 +26,7 @@ export default function Nav() {
         </div>
         <div className="nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
           {[['skills','01'],['projects','02'],['about','03'],['contact','04']].map(([id, n]) => (
-            <button className={`nav-link nav-link-${id}`} key={id} data-h onClick={() => rafScrollTo(id)}
+            <a className={`nav-link nav-link-${id}`} key={id} href={`#${id}`} data-h
               style={{
                 fontFamily: 'var(--mono)', fontSize: 11,
                 color: '#8bacc8',
@@ -41,15 +37,17 @@ export default function Nav() {
               }}
               onMouseEnter={e => e.currentTarget.style.color = '#00d4ff'}
               onMouseLeave={e => e.currentTarget.style.color = '#8bacc8'}>
-              <span className="nav-number">{n}</span> {id}
-            </button>
+              <span className="nav-number" aria-hidden="true">{n}</span> {id}
+            </a>
           ))}
 
           {/* CV download button — special */}
-          <button
+          <a
             data-h
             className="nav-resume"
-            onClick={openCV}
+            href={resumeHref}
+            download
+            onClick={openResume}
             style={{
               fontFamily: 'var(--mono)', fontSize: 11,
               color: '#00d4ff',
@@ -75,7 +73,7 @@ export default function Nav() {
           >
             05 resume
             <span className="nav-arrow" style={{ fontSize: 10, transition: 'transform 0.2s ease' }}>⬇</span>
-          </button>
+          </a>
         </div>
       </div>
     </nav>

@@ -13,26 +13,24 @@ export default function App() {
   const [showCV, setShowCV] = useState(false);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    if (window.location.hash) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-
-    // Reveal observer
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    const observer = typeof IntersectionObserver === 'function' && new IntersectionObserver((entries) => {
+      entries.forEach(({ isIntersecting, target }) => {
+        if (isIntersecting) {
+          target.classList.add('visible');
+          observer.unobserve(target);
+        }
+      });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    const timer = setTimeout(() => {
-      document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach(el => obs.observe(el));
-    }, 100);
+    if (observer) {
+      document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach(element => observer.observe(element));
+    }
 
     // CV modal event listener
     const openHandler = () => setShowCV(true);
     window.addEventListener('open-cv-download', openHandler);
 
     return () => {
-      obs.disconnect();
-      clearTimeout(timer);
+      if (observer) observer.disconnect();
       window.removeEventListener('open-cv-download', openHandler);
     };
   }, []);
@@ -42,11 +40,13 @@ export default function App() {
       <SpaceCanvas />
       <Cursor />
       <Nav />
-      <Hero />
-      <Skills />
-      <Projects />
-      <About />
-      <Contact />
+      <main>
+        <Hero />
+        <Skills />
+        <Projects />
+        <About />
+        <Contact />
+      </main>
       <footer className="site-footer" style={{ borderTop: '1px solid rgba(0,180,255,0.12)', position: 'relative', zIndex: 1, background: 'rgba(4,7,14,0.5)', backdropFilter: 'blur(12px)' }}>
         <div className="site-footer-inner" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text3)', letterSpacing: 1 }}>© 2026 Houdaifa Drahm</span>

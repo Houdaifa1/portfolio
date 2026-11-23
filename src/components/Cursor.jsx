@@ -8,6 +8,7 @@ export default function Cursor() {
     const cur = document.getElementById('cur');
     const ring = document.getElementById('curR');
     if (!cur || !ring) return;
+    document.documentElement.classList.add('has-custom-cursor');
     let mx = 0, my = 0, rx = 0, ry = 0;
     const onMove = e => { mx = e.clientX; my = e.clientY; };
     document.addEventListener('mousemove', onMove);
@@ -27,6 +28,7 @@ export default function Cursor() {
     };
     document.addEventListener('mouseover', onOver);
     return () => {
+      document.documentElement.classList.remove('has-custom-cursor');
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseover', onOver);
       cancelAnimationFrame(animId);

@@ -1,21 +1,6 @@
-import { useState, useEffect } from 'react';
-import { rafScrollTo } from '../utils/scroll';
+import { openResume, resumeHref } from '../utils/resume';
 
 export default function Hero() {
-  const [typed, setTyped] = useState('');
-  const full = 'Backend & DevOps Engineer';
-
-  useEffect(() => {
-    let i = 0;
-    const t = setInterval(() => {
-      if (i <= full.length) { setTyped(full.slice(0, i)); i++; }
-      else clearInterval(t);
-    }, 60);
-    return () => clearInterval(t);
-  }, []);
-
-  const openCV = () => window.dispatchEvent(new CustomEvent('open-cv-download'));
-
   return (
     <section className="hero" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 2, background: 'transparent' }}>
       <div className="hero-inner" style={{ padding: '120px 24px 80px', width: '100%', position: 'relative' }}>
@@ -23,15 +8,17 @@ export default function Hero() {
         <div style={{ position: 'absolute', bottom: '18%', left: '18%', width: 260, height: 260, background: 'radial-gradient(circle,rgba(0,212,255,.08) 0%,transparent 68%)', pointerEvents: 'none' }} />
 
         <h1 className="hero-title" style={{ fontFamily: 'var(--display)', fontSize: 'clamp(64px,10vw,140px)', fontWeight: 800, lineHeight: .88, letterSpacing: -4, marginBottom: 36 }}>
-          <span style={{ display: 'block', color: '#f0f6ff', animation: 'fadeUp .7s .1s ease both', opacity: 0, animationFillMode: 'forwards' }}>HOUDAIFA</span>{' '}
+          <span style={{ display: 'block', color: '#f0f6ff', animation: 'fadeUp .7s .1s ease both', opacity: 0, animationFillMode: 'forwards' }}>Houdaifa</span>{' '}
           <span style={{ display: 'block', position: 'relative', color: 'transparent', WebkitTextStroke: '2px rgba(255,255,255,.35)', animation: 'fadeUp .7s .2s ease both', opacity: 0, animationFillMode: 'forwards' }}>
-            DRAHM
+            Drahm
             <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, background: 'linear-gradient(120deg,#00d4ff,#0066ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', clipPath: 'inset(0 100% 0 0)', animation: 'wipe 1.1s .85s cubic-bezier(.77,0,.18,1) forwards' }} className="hero-wipe" />
           </span>
         </h1>
 
         <div style={{ fontFamily: 'var(--mono)', fontSize: 17, color: '#c0d8f0', marginBottom: 16, minHeight: 24, animation: 'fadeUp .7s .35s ease both', opacity: 0, animationFillMode: 'forwards' }}>
-          <span style={{ color: '#00ff88' }}>&gt;</span> {typed}<span style={{ display: 'inline-block', width: 8, height: 17, background: '#00d4ff', marginLeft: 2, animation: 'blink 1s infinite', verticalAlign: 'middle' }} />
+          <span aria-hidden="true" style={{ color: '#00ff88' }}>&gt; </span>
+          <span className="hero-role">Backend &amp; DevOps Engineer</span>
+          <span aria-hidden="true" style={{ display: 'inline-block', width: 8, height: 17, background: '#00d4ff', marginLeft: 2, animation: 'blink 1s infinite', verticalAlign: 'middle' }} />
         </div>
 
         <p className="hero-copy" style={{ maxWidth: 520, fontSize: 19, lineHeight: 1.82, color: '#a8c4dc', marginBottom: 44, animation: 'fadeUp .7s .45s ease both', opacity: 0, animationFillMode: 'forwards' }}>
@@ -40,14 +27,14 @@ export default function Hero() {
 
         {/* CTA buttons */}
         <div className="hero-actions" style={{ display: 'flex', gap: 14, marginBottom: 24, animation: 'fadeUp .7s .55s ease both', opacity: 0, animationFillMode: 'forwards' }}>
-          <button onClick={() => rafScrollTo('projects')} data-h
+          <a href="#projects" data-h
             style={{ padding: '14px 32px', background: '#00d4ff', color: '#07090e', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', border: 'none', cursor: 'pointer', transition: 'box-shadow .2s', borderRadius: 8 }}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,.6)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>VIEW PROJECTS</button>
-          <button onClick={() => rafScrollTo('contact')} data-h
+            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>VIEW PROJECTS</a>
+          <a href="#contact" data-h
             style={{ padding: '14px 32px', background: '#00d4ff', color: '#07090e', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', border: 'none', cursor: 'pointer', transition: 'box-shadow .2s', borderRadius: 8 }}
             onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 36px rgba(0,212,255,.6)'}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>GET IN TOUCH</button>
+            onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}>GET IN TOUCH</a>
         </div>
 
         {/* CV file-card download */}
@@ -87,8 +74,10 @@ export default function Hero() {
           .cv-card-arrow { animation: cvArrowBounce 1.6s 1.8s ease-in-out infinite; }
         `}</style>
 
-        <div
-          onClick={openCV}
+        <a
+          href={resumeHref}
+          download
+          onClick={openResume}
           data-h
           className="cv-card"
           style={{
@@ -169,7 +158,7 @@ export default function Hero() {
             transition: 'transform 0.2s ease',
             filter: 'drop-shadow(0 0 4px rgba(0,212,255,0.8))',
           }}>⬇</div>
-        </div>
+        </a>
 
         <div className="scroll-hint" style={{ position: 'absolute', bottom: 36, left: 48, display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--mono)', fontSize: 10, color: '#4a6480', letterSpacing: 2, animation: 'fadeUp .7s .8s ease both', opacity: 0, animationFillMode: 'forwards' }}>
           <div style={{ width: 1, height: 36, background: 'linear-gradient(#00d4ff,transparent)' }} /> SCROLL

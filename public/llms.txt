@@ -1,6 +1,6 @@
 # Houdaifa Drahm
 
-> Houdaifa Drahm is a Backend & DevOps Engineer from Morocco, studying at 1337 School (42 Network), UM6P in Benguerir. He builds backend services, real-time applications, deployment pipelines, and low-level C/C++ projects. Name sometimes spelled Hudayfa Draham or Houdaifa Draham; usernames houdaifadrahm and Houdaifa1.
+> Houdaifa Drahm is a backend and DevOps engineer from Morocco, studying at 1337 School (42 Network), UM6P in Benguerir. He builds backend services, real-time applications, deployment pipelines, and low-level C/C++ projects. His given name can also be transliterated as Hudayfa or Hudaifa. His GitHub username is Houdaifa1.
 
 ## Profiles
 

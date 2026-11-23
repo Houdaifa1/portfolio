@@ -7,17 +7,28 @@
   --text:#f0f6ff;--text2:#8bacc8;--text3:#4a6480;
   --mono:'JetBrains Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
 }
-html{scroll-behavior:auto}
-body{background:#060910;color:var(--text);font-family:var(--sans);overflow-x:hidden;cursor:none}
+html{scroll-padding-top:72px}
+body{background:#060910;color:var(--text);font-family:var(--sans);overflow-x:hidden}
+html.has-custom-cursor body{cursor:none}
 button,a,[role="button"]{-webkit-tap-highlight-color:transparent}
 #root{min-height:100vh;position:relative;z-index:1;background:transparent}
+.hero-title{text-transform:uppercase}
 .hero-wipe::before{content:'DRAHM'}
+.hero-role{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:middle}
+@media(prefers-reduced-motion:no-preference){
+  .hero-role{animation:type-role 1.5s .35s steps(25,end) both}
+}
+@keyframes type-role{from{width:0}to{width:25ch}}
+.nav-link,.nav-resume,.hero-actions a,.cv-card{text-decoration:none}
+.nav-link,.hero-actions a{display:inline-flex;align-items:center;justify-content:center;gap:.5em}
+.about-portrait{display:block;width:80px;height:80px;object-fit:cover;border-radius:50%;margin-bottom:24px}
 section{background:transparent;position:relative;z-index:2}
 p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
 .card{background:rgba(10,16,28,0.88);backdrop-filter:blur(12px)}
 #space-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 .cursor{position:fixed;width:10px;height:10px;background:#00d4ff;border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);mix-blend-mode:screen;transition:width .12s,height .12s}
 .cursor-ring{position:fixed;width:34px;height:34px;border:1.5px solid rgba(0,212,255,.45);border-radius:50%;pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:width .22s,height .22s,border-color .22s}
+html:not(.has-custom-cursor) :is(.cursor,.cursor-ring){display:none}
 .cursor.big{width:20px;height:20px}.cursor-ring.big{width:56px;height:56px;border-color:rgba(0,212,255,.75)}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:rgba(4,7,14,0.8)}::-webkit-scrollbar-thumb{background:#2a3d54;border-radius:4px}
 ::selection{background:rgba(0,212,255,.22)}input,textarea{cursor:text!important}
@@ -31,27 +42,22 @@ p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-s
 @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
 @keyframes slideInRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
-.reveal{opacity:0;transform:translateY(32px);transition:opacity .7s ease,transform .7s ease}
-.reveal.visible{opacity:1;transform:translateY(0)}
-.reveal-left{opacity:0;transform:translateX(-32px);transition:opacity .7s ease,transform .7s ease}
-.reveal-left.visible{opacity:1;transform:translateX(0)}
-.reveal-right{opacity:0;transform:translateX(32px);transition:opacity .7s ease,transform .7s ease}
-.reveal-right.visible{opacity:1;transform:translateX(0)}
+.reveal.visible{animation:fadeUp .7s ease both}
+.reveal-left.visible{animation:slideInLeft .7s ease both}
+.reveal-right.visible{animation:slideInRight .7s ease both}
 
 /* Touch device adjustments */
 @media (pointer: coarse) {
   .cursor, .cursor-ring {
     display: none !important;
   }
-  body,button,a,[role="button"],[data-h]{cursor:auto!important}
+  html.has-custom-cursor body,button,a,[role="button"],[data-h]{cursor:auto!important}
 }
 
 .site-footer-inner{gap:20px}
 
 @media(max-width:780px){
   html{scroll-padding-top:68px}
-  body{cursor:auto}
-  section{scroll-margin-top:64px}
   .site-nav-inner{padding:12px 16px!important}
   .nav-links{gap:4px!important}
   .nav-link,.nav-resume{min-height:44px;padding:8px!important;font-size:10px!important;letter-spacing:.8px!important}
@@ -61,7 +67,7 @@ p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-s
   .hero-title{font-size:clamp(44px,15vw,70px)!important;letter-spacing:-2px!important;margin-bottom:28px!important;line-height:.92!important}
   .hero-copy{font-size:17px!important;line-height:1.65!important;margin-bottom:32px!important}
   .hero-actions{flex-wrap:wrap!important}
-  .hero-actions button{min-height:48px;flex:1 1 170px;padding:13px 18px!important}
+  .hero-actions a{min-height:48px;flex:1 1 170px;padding:13px 18px!important}
   .cv-card{max-width:100%;animation:fadeUp .7s .65s ease both,cvGlow 3.8s 1.4s ease-in-out infinite!important}
   .scroll-hint{display:none!important}
   .cv-modal{padding:12px!important;align-items:flex-start!important;overflow-y:auto}
@@ -124,6 +130,5 @@ p,h1,h2,h3,h4,span,div,a,button{text-rendering:optimizeLegibility;-webkit-font-s
 }
 
 @media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
